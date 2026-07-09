@@ -787,14 +787,20 @@
         }
         .floating-combo {
           left: 50% !important;
-          transform: translate(-50%, -100%) scale(1) !important;
-          top: 68% !important;
+          top: 72px !important;
+          bottom: auto !important;
+          transform: translateX(-50%) scale(1) !important;
           text-align: center;
-          font-size: 2.4rem;
+          font-size: 2rem;
           z-index: 99 !important;
+          background: rgba(11, 12, 22, 0.55);
+          backdrop-filter: blur(8px);
+          padding: 4px 18px 8px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.08);
         }
         .floating-combo.combo-pop {
-          transform: translate(-50%, -100%) scale(1.22) !important;
+          transform: translateX(-50%) scale(1.18) !important;
         }
         .combo-label {
           text-align: center;

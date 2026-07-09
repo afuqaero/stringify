@@ -289,8 +289,15 @@ function generateScene(numLanes: number) {
   
   // Set floating combo position dynamically — clearly outside the highway border
   // Easy (3): 290px, Medium (4): 360px, Hard (5): 430px
-  const offset = 290 + (numLanes - 3) * 70;
-  floatingCombo.style.left = `calc(50% + ${offset}px)`;
+  // On mobile, CSS media query handles positioning instead
+  if (window.innerWidth > 768) {
+    const offset = 290 + (numLanes - 3) * 70;
+    floatingCombo.style.left = `calc(50% + ${offset}px)`;
+    floatingCombo.style.top = '';
+  } else {
+    floatingCombo.style.left = '';
+    floatingCombo.style.top = '';
+  }
   
   // Clear old objects
   if (track) scene.remove(track);
