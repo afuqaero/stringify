@@ -1070,6 +1070,9 @@ function checkHit(lane: number) {
 
 // Single core song upload handler
 async function handleSongStart(file: File, selectedMode: 'play' | 'chart', difficulty: string) {
+  // Turn off background music immediately when loading starts
+  triggerBgMusic(false);
+  
   // Show Loading card
   hubPlayConfig.classList.add('hidden');
   hubRecordConfig.classList.add('hidden');
