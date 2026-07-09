@@ -80,6 +80,8 @@ export async function analyzeAudio(arrayBuffer: ArrayBuffer, difficulty: string)
     }
   }
   
+  // Release OS audio resources
+  await audioContext.close();
   return { buffer: audioBuffer, notes, numLanes };
 }
 

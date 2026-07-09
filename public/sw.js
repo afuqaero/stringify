@@ -31,6 +31,13 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    fetch(e.request)
+      .then(response => {
+        // Update cache with fresh network response so new assets are available offline
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, responseClone));
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });

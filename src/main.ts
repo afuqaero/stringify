@@ -154,24 +154,39 @@ let activeLightning: { mesh: THREE.Mesh, life: number }[] = [];
 // Calibration parameters tracking
 let calibDifficultySource: 'play' | 'record' = 'play';
 
+// HTML escape helper — prevents XSS when inserting user-supplied strings into innerHTML
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // Custom in-game toast notifications helper
 function showNotification(message: string, isError: boolean = false) {
   const container = document.getElementById('toast-container');
   if (!container) return;
-  
+
   const toast = document.createElement('div');
   toast.className = `toast ${isError ? 'error' : ''}`;
-  
+
   const icon = isError ? 'fa-triangle-exclamation' : 'fa-circle-check';
   const color = isError ? 'var(--primary)' : 'var(--accent)';
-  
-  toast.innerHTML = `
-    <i class="fa-solid ${icon}" style="color: ${color};"></i>
-    <span>${message}</span>
-  `;
-  
+
+  // Use DOM methods instead of innerHTML so message content can never execute as HTML
+  const iconEl = document.createElement('i');
+  iconEl.className = `fa-solid ${icon}`;
+  iconEl.style.color = color;
+
+  const textEl = document.createElement('span');
+  textEl.textContent = message;
+
+  toast.appendChild(iconEl);
+  toast.appendChild(textEl);
   container.appendChild(toast);
-  
+
   setTimeout(() => {
     toast.remove();
   }, 3000);
@@ -300,11 +315,32 @@ function generateScene(numLanes: number) {
     floatingCombo.style.top = '';
   }
   
-  // Clear old objects
-  if (track) scene.remove(track);
-  separators.forEach(s => scene.remove(s));
-  receptors.forEach(r => scene.remove(r));
-  highwayBars.forEach(b => scene.remove(b));
+  // Clear old objects — dispose geometry + material to prevent GPU memory leaks
+  if (track) {
+    scene.remove(track);
+    track.geometry.dispose();
+    (track.material as THREE.Material).dispose();
+  }
+  separators.forEach(s => {
+    scene.remove(s);
+    s.geometry.dispose();
+    (s.material as THREE.Material).dispose();
+  });
+  receptors.forEach(r => {
+    scene.remove(r);
+    const cInfo = (r as any).canvasInfo;
+    if (cInfo?.texture) cInfo.texture.dispose();
+    r.traverse(child => {
+      const m = child as THREE.Mesh;
+      if (m.geometry) m.geometry.dispose();
+      if (m.material) (m.material as THREE.Material).dispose();
+    });
+  });
+  highwayBars.forEach(b => {
+    scene.remove(b);
+    b.geometry.dispose();
+    (b.material as THREE.Material).dispose();
+  });
   separators = [];
   receptors = [];
   highwayBars = [];
@@ -344,7 +380,11 @@ function generateScene(numLanes: number) {
   separators.push(rightBorder);
   
   // Fire Edges (Invisible normally)
-  fireEdges.forEach(f => scene.remove(f));
+  fireEdges.forEach(f => {
+    scene.remove(f);
+    f.geometry.dispose();
+    (f.material as THREE.Material).dispose();
+  });
   fireEdges = [];
   
   const fireLeftGeo = new THREE.PlaneGeometry(0.4, Math.abs(SPAWN_Z) + RECEPTOR_Z + 10);
@@ -1080,6 +1120,7 @@ function showCompleteScreen() {
 function restartGame() {
   stopAudio();
   currentBuffer = lastLoadedBuffer;
+  if (isRecordingMode) recordedNotes = []; // reset recording on restart
   
   const numLanes = currentNumLanes;
   generateScene(numLanes);
@@ -1540,7 +1581,9 @@ audioUploadPlay.addEventListener('change', async (e) => {
         loadedCustomChart = sanitizeChart(JSON.parse(savedChartStr));
         showNotification("Loaded previously saved chart!");
       }
-    } catch(err) {}
+    } catch(err) {
+      showNotification("Saved chart data is corrupted and was skipped.", true);
+    }
   }
 
   if (!loadedCustomChart) {
@@ -1590,10 +1633,11 @@ async function renderLibrary() {
       const hasChart = !!localStorage.getItem(`chart_${song}`);
       const chartIcon = hasChart ? '<i class="fa-solid fa-file-circle-check" style="color:var(--accent)" title="Chart Ready"></i>' : '<i class="fa-solid fa-file-circle-xmark" style="color:#f43f5e" title="No Chart"></i>';
 
+      const eSong = escapeHtml(song); // escape once, reuse everywhere
       return `
       <div class="library-item gh-style">
         <div class="gh-left">
-          <div class="gh-title" title="${song}">${song}</div>
+          <div class="gh-title" title="${eSong}">${eSong}</div>
           <div class="gh-sub">LENGTH: ${durationStr} &nbsp; ${chartIcon}</div>
         </div>
         <div class="gh-dots"></div>
@@ -1605,11 +1649,11 @@ async function renderLibrary() {
           ${mode === 'play' ? `
           <label class="lib-action-btn" title="Upload JSON Chart" style="cursor:pointer; margin-bottom:0;">
             <i class="fa-solid fa-file-arrow-up"></i>
-            <input type="file" class="lib-upload-json" data-song="${song}" accept=".json" style="display:none;" />
+            <input type="file" class="lib-upload-json" data-song="${eSong}" accept=".json" style="display:none;" />
           </label>
           ` : ''}
-          <button class="lib-action-btn lib-play-btn" data-song="${song}" data-mode="${mode}" title="${mode === 'play' ? 'Play' : 'Record'}"><i class="fa-solid fa-${mode === 'play' ? 'play' : 'circle-dot'}"></i></button>
-          <button class="lib-action-btn lib-del-btn" data-song="${song}" title="Delete"><i class="fa-solid fa-trash"></i></button>
+          <button class="lib-action-btn lib-play-btn" data-song="${eSong}" data-mode="${mode}" title="${mode === 'play' ? 'Play' : 'Record'}"><i class="fa-solid fa-${mode === 'play' ? 'play' : 'circle-dot'}"></i></button>
+          <button class="lib-action-btn lib-del-btn" data-song="${eSong}" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
       `;
@@ -1643,7 +1687,9 @@ async function renderLibrary() {
             if (savedChartStr) {
               loadedCustomChart = sanitizeChart(JSON.parse(savedChartStr));
             }
-          } catch(err) {}
+          } catch(err) {
+            showNotification("Saved chart data is corrupted and was skipped.", true);
+          }
         }
         
         if (!loadedCustomChart) {
@@ -2257,7 +2303,7 @@ function playPowerUpSound() {
         gainNode.gain.value = 0.8;
         
         source.connect(gainNode);
-        gainNode.connect(mainTrackGainNode || ctx.destination);
+        gainNode.connect(ctx.destination); // always route directly; mainTrackGainNode may be null
         source.start(0);
       })
       .catch(e => console.error("Error playing startup sound:", e));
@@ -2278,10 +2324,12 @@ function playStarPowerSound() {
       mainTrackGainNode.gain.linearRampToValueAtTime(0.65, ctx.currentTime + 0.5);
     }
 
-    const now = ctx.currentTime;
+    const scheduleNow = ctx.currentTime; // for volume scheduling only
 
     // Play both star power SFX and applause simultaneously
     const playBoth = () => {
+      const now = ctx.currentTime; // fresh capture when buffers are actually ready
+
       // --- OG Guitar Hero Star Power SFX ---
       if (starPowerAudioBuffer) {
         const spSource = ctx.createBufferSource();
@@ -2339,8 +2387,8 @@ function playStarPowerSound() {
 
     // Restore main track volume after star power ends
     if (mainTrackGainNode) {
-      mainTrackGainNode.gain.setValueAtTime(0.65, now + 10);
-      mainTrackGainNode.gain.linearRampToValueAtTime(1.0, now + 11);
+      mainTrackGainNode.gain.setValueAtTime(0.65, scheduleNow + 10);
+      mainTrackGainNode.gain.linearRampToValueAtTime(1.0, scheduleNow + 11);
     }
 
   } catch (e) {}
@@ -2452,6 +2500,9 @@ animate();
 addHoverSounds();
 
 // Unlock and play background music on the first user interaction gesture
+// Use the same reference for both listeners so removeEventListener works correctly.
+// The original code used an anonymous wrapper for 'click', meaning it could never
+// be removed and called triggerBgMusic on every click for the entire session.
 const unlockAudio = () => {
   if (currentState !== GameState.PLAY) {
     triggerBgMusic(true);
@@ -2460,12 +2511,10 @@ const unlockAudio = () => {
   window.removeEventListener('keydown', unlockAudio);
 };
 
-window.addEventListener('click', (e) => {
-  unlockAudio();
-  // Ensure document body gets focus for keyboard inputs
-  document.body.focus();
-});
+window.addEventListener('click', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
+// Separate persistent handler for body focus (intentionally always active)
+window.addEventListener('click', () => document.body.focus());
 
 btnStartGame.addEventListener('click', () => {
   if (currentState === GameState.TITLE) {
