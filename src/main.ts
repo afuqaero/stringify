@@ -659,30 +659,7 @@ document.getElementById('btn-close-guide')?.addEventListener('click', () => {
   hubPlayConfig.classList.remove('hidden');
 });
 
-document.getElementById('btn-download-sample')?.addEventListener('click', () => {
-  const sampleNotes = [];
-  // Generate a premium sample chart with ~110 notes spread across 4 lanes
-  for (let i = 0; i < 110; i++) {
-    const time = 3.0 + (i * 0.9);
-    const lane = i % 4;
-    // Intermittent hold notes for visual variety
-    if (i % 8 === 0) {
-      sampleNotes.push({ time: parseFloat(time.toFixed(3)), lane, duration: 1.6 });
-    } else if (i % 12 === 0) {
-      sampleNotes.push({ time: parseFloat(time.toFixed(3)), lane, duration: 2.5 });
-    } else {
-      sampleNotes.push({ time: parseFloat(time.toFixed(3)), lane });
-    }
-  }
-  
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sampleNotes, null, 2));
-  const downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", "sample_chart.json");
-  document.body.appendChild(downloadAnchor);
-  downloadAnchor.click();
-  downloadAnchor.remove();
-});
+
 cardChoiceRecord.addEventListener('click', () => {
   hubChoiceSelect.classList.add('hidden');
   hubRecordConfig.classList.remove('hidden');
