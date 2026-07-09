@@ -592,29 +592,71 @@
           text-align: center;
           font-size: 0.75rem;
         }
-        .hud-bar {
-          gap: 12px;
-          padding: 4px 12px;
+        #top-hud {
+          left: 15px !important;
+          right: auto !important;
+          transform: none !important;
+          top: 15px !important;
+          background: none !important;
+          border: none !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+          align-items: flex-start !important;
+        }
+        #top-hud .hud-group:not(:first-child) {
+          display: none !important;
         }
         #hud-song-val {
-          max-width: 100px;
+          max-width: 140px !important;
+          text-align: left !important;
+          font-size: 0.85rem !important;
         }
-        #top-hud {
-          top: 10px;
+        #top-hud .hud-label {
+          font-size: 0.6rem !important;
+          text-align: left !important;
         }
         #stats-hud {
-          top: 10px;
-          right: 10px;
-          gap: 10px;
-          padding: 4px 10px;
+          top: 15px !important;
+          right: 15px !important;
+          gap: 12px !important;
+          padding: 6px 12px !important;
+          background: rgba(12, 16, 33, 0.75) !important;
+          transform: none !important;
+        }
+        #stats-hud .hud-val {
+          font-size: 0.85rem !important;
+        }
+        #stats-hud .hud-label {
+          font-size: 0.6rem !important;
         }
         #hamburger-btn {
-          top: 10px;
-          left: 10px;
+          top: auto !important;
+          bottom: 20px !important;
+          left: 20px !important;
+          z-index: 100 !important;
+          width: 50px !important;
+          height: 50px !important;
+          border-radius: 50% !important;
+          background: rgba(12, 16, 33, 0.85) !important;
+          border: 1px solid var(--glass-border) !important;
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+        }
+        #hamburger-btn span {
+          width: 22px !important;
+        }
+        #hamburger-btn span:nth-child(1) {
+          transform-origin: 2px 3px;
+        }
+        #hamburger-btn span:nth-child(3) {
+          transform-origin: 2px -1px;
         }
         #hamburger-menu {
-          top: 60px;
-          left: 10px;
+          top: auto !important;
+          bottom: 80px !important;
+          left: 20px !important;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.6);
         }
       }
 

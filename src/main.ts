@@ -366,7 +366,7 @@ function generateScene(numLanes: number) {
     mesh.position.y = 0.02;
     
     group.add(mesh);
-    group.position.set(startX + i * LANE_WIDTH, 0.05, RECEPTOR_Z);
+    group.position.set(startX + i * LANE_WIDTH, 0.05, isRecordingMode ? -40 : RECEPTOR_Z);
     
     scene.add(group);
     receptors.push(group);
@@ -1487,7 +1487,7 @@ function animate() {
           const head = createNoteGeometry(COLORS[i % COLORS.length]);
           group.add(head);
           
-          group.position.set(startX + i * LANE_WIDTH, 0.05, RECEPTOR_Z);
+          group.position.set(startX + i * LANE_WIDTH, 0.05, -40);
           scene.add(group);
           recordingVisualSustains[i] = group;
 
@@ -1508,8 +1508,8 @@ function animate() {
           
           if (group) {
             const tailLength = duration * currentNoteSpeed;
-            // Move note head down the highway (Up-to-Down direction)
-            group.position.z = RECEPTOR_Z + tailLength;
+            // Move note head down the highway (Up-to-Down direction from far end)
+            group.position.z = -40 + tailLength;
             
             // Only draw tail/cap if duration exceeds sustain note threshold (0.15s)
             if (duration > 0.15) {
@@ -1657,12 +1657,12 @@ function animate() {
 
     activeNotes.forEach(note => {
       if (isRecordingMode) {
-        // RECORD MODE NOTE MOVEMENT (Up to Down)
+        // RECORD MODE NOTE MOVEMENT (Up to Down starting from far end)
         const elapsed = currentTime - note.time;
-        const noteZ = RECEPTOR_Z + (elapsed * currentNoteSpeed);
+        const noteZ = -40 + (elapsed * currentNoteSpeed);
         note.group.position.z = noteZ;
         
-        if (noteZ > RECEPTOR_Z + 20) {
+        if (noteZ > 12) {
           scene.remove(note.group);
         }
         return;
