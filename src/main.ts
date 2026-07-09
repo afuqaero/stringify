@@ -84,6 +84,23 @@ const GameState = {
 };
 let currentState = GameState.TITLE;
 
+// Background Music
+const bgMusic = document.getElementById('bg-music') as HTMLAudioElement;
+if (bgMusic) {
+  bgMusic.volume = 0.2; // 20% volume
+}
+
+function triggerBgMusic(play: boolean) {
+  if (!bgMusic) return;
+  if (play) {
+    bgMusic.play().catch(() => {
+      // Catch autoplay block
+    });
+  } else {
+    bgMusic.pause();
+  }
+}
+
 // Game State variables
 let audioContext: AudioContext;
 let audioSource: AudioBufferSourceNode | null = null;
@@ -498,6 +515,7 @@ chartUpload.addEventListener('change', async (e) => {
 
 // Update UI state
 function switchState(newState: GameState) {
+  triggerBgMusic(newState !== GameState.PLAY);
   currentState = newState;
   screenTitle.classList.add('hidden');
   screenHub.classList.add('hidden');
