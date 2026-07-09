@@ -770,9 +770,30 @@ function showCompleteScreen() {
   completeScore.innerText = Math.round(score).toString();
   completeAccuracy.innerText = acc + '%';
   completeMissed.innerText = missed.toString();
-  completeStars.innerText = '⭐'.repeat(stars);
-
+  
+  // Clear stars container
+  completeStars.innerHTML = '';
   switchState(GameState.COMPLETE);
+  
+  // Apply card pop animation
+  const completeCard = screenComplete.querySelector('.card');
+  if (completeCard) {
+    completeCard.classList.remove('card-popup');
+    void (completeCard as HTMLElement).offsetWidth; // trigger reflow
+    completeCard.classList.add('card-popup');
+  }
+
+  // Pop stars one by one with sound
+  for (let s = 0; s < stars; s++) {
+    setTimeout(() => {
+      if (currentState !== GameState.COMPLETE) return;
+      const span = document.createElement('span');
+      span.className = 'star-pop';
+      span.innerText = '⭐';
+      playStarPopSound(s);
+      completeStars.appendChild(span);
+    }, s * 220);
+  }
 }
 
 function restartGame() {
@@ -1507,6 +1528,67 @@ function animate() {
   input.update();
 }
 
+// Bubbly Hover Sound effect
+function playBubbleSound() {
+  try {
+    const ctx = audioContext || new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.type = 'sine';
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(320, now);
+    osc.frequency.exponentialRampToValueAtTime(750, now + 0.08);
+    
+    gainNode.gain.setValueAtTime(0.035, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc.start(now);
+    osc.stop(now + 0.09);
+  } catch (e) {}
+}
+
+// Progressive Star Pop Sound (Arpeggio scale)
+function playStarPopSound(index: number) {
+  try {
+    const ctx = audioContext || new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    const freqs = [523.25, 587.33, 659.25, 783.99, 880.00]; // C5, D5, E5, G5, A5
+    const freq = freqs[index % freqs.length];
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    
+    gainNode.gain.setValueAtTime(0.05, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16);
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.18);
+  } catch (e) {}
+}
+
+function addHoverSounds() {
+  const targets = document.querySelectorAll('button, .btn, .start-btn, .hud-btn, .ham-menu-btn, .choice-card, .lane-calib, .custom-option');
+  targets.forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      playBubbleSound();
+    });
+  });
+}
+
 // Initial state and loop kick-off
 switchState(GameState.TITLE);
 animate();
+
+// Initialize UI hover audio triggers
+addHoverSounds();

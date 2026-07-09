@@ -502,6 +502,42 @@
         display: block;
         margin-bottom: -10px;
       }
+      
+      /* CARD POPUP ENTRANCE ANIMATION */
+      .card-popup {
+        animation: cardPopup 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+      @keyframes cardPopup {
+        0% {
+          transform: scale(0.7);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      
+      /* STAR PROGRESSIVE POP ANIMATION */
+      .star-pop {
+        display: inline-block;
+        opacity: 0;
+        transform: scale(0.3) rotate(-30deg);
+        animation: starPopIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+      @keyframes starPopIn {
+        0% {
+          opacity: 0;
+          transform: scale(0.3) rotate(-30deg);
+        }
+        50% {
+          transform: scale(1.4) rotate(10deg);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1) rotate(0deg);
+        }
+      }
     </style>
   </head>
   <body>
