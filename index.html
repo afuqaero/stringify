@@ -295,12 +295,24 @@
         margin: 0;
       }
 
+      /* UNIFIED HUD HEADER CONTAINER */
+      #game-header {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        right: 20px;
+        z-index: 20;
+        display: grid;
+        grid-template-columns: 60px 1fr auto;
+        align-items: center;
+        pointer-events: none;
+      }
+      #game-header.hidden {
+        display: none !important;
+      }
+
       /* HUD STYLING */
       .hud-bar {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 5;
         background: rgba(12, 16, 33, 0.75);
         backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -312,17 +324,17 @@
         pointer-events: auto;
       }
       #top-hud {
-        top: 15px;
+        justify-self: center;
       }
-      #bottom-hud {
-        bottom: 15px;
+      #stats-hud {
+        justify-self: end;
+        display: flex;
+        gap: 24px;
       }
 
       /* HAMBURGER BUTTON */
       #hamburger-btn {
-        position: absolute;
-        top: 20px;
-        left: 20px;
+        justify-self: start;
         z-index: 20;
         width: 44px;
         height: 44px;
@@ -593,16 +605,18 @@
           text-align: center;
           font-size: 0.75rem;
         }
+        #game-header {
+          grid-template-columns: 1fr auto !important;
+          top: 10px !important;
+          left: 10px !important;
+          right: 10px !important;
+        }
         #top-hud {
-          left: 15px !important;
-          right: auto !important;
-          transform: none !important;
-          top: 15px !important;
+          justify-self: start !important;
           background: none !important;
           border: none !important;
           padding: 0 !important;
           box-shadow: none !important;
-          align-items: flex-start !important;
         }
         #top-hud .hud-group:not(:first-child) {
           display: none !important;
@@ -617,12 +631,12 @@
           text-align: left !important;
         }
         #stats-hud {
-          top: 15px !important;
-          right: 15px !important;
+          justify-self: end !important;
           gap: 12px !important;
           padding: 6px 12px !important;
           background: rgba(12, 16, 33, 0.75) !important;
-          transform: none !important;
+          border: 1px solid rgba(255, 255, 255, 0.08) !important;
+          border-radius: 10px !important;
         }
         #stats-hud .hud-val {
           font-size: 0.85rem !important;
@@ -631,9 +645,11 @@
           font-size: 0.6rem !important;
         }
         #hamburger-btn {
-          top: auto !important;
+          position: fixed !important;
           bottom: 20px !important;
           left: 20px !important;
+          top: auto !important;
+          right: auto !important;
           z-index: 100 !important;
           width: 50px !important;
           height: 50px !important;
@@ -654,6 +670,7 @@
           transform-origin: 2px -1px;
         }
         #hamburger-menu {
+          position: fixed !important;
           top: auto !important;
           bottom: 80px !important;
           left: 20px !important;
@@ -859,31 +876,39 @@
       RECORDING
     </div>
  
-    <!-- TOP HUD -->
-    <div id="top-hud" class="hud-bar hidden">
-      <div class="hud-group" style="min-width: 100px;">
-        <span class="hud-label">SONG</span>
-        <span id="hud-song-val" class="hud-val">-</span>
+    <!-- Unified Game HUD Header -->
+    <div id="game-header" class="hidden">
+      <!-- HAMBURGER BUTTON (shown during gameplay) -->
+      <button id="hamburger-btn" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <!-- TOP HUD -->
+      <div id="top-hud" class="hud-bar hidden">
+        <div class="hud-group" style="min-width: 100px;">
+          <span class="hud-label">SONG</span>
+          <span id="hud-song-val" class="hud-val">-</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">LANES</span>
+          <span id="hud-lanes-val" class="hud-val">-</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">NOTES</span>
+          <span id="hud-notes-val" class="hud-val">-</span>
+        </div>
       </div>
-      <div class="hud-group">
-        <span class="hud-label">LANES</span>
-        <span id="hud-lanes-val" class="hud-val">-</span>
-      </div>
-      <div class="hud-group">
-        <span class="hud-label">NOTES</span>
-        <span id="hud-notes-val" class="hud-val">-</span>
-      </div>
-    </div>
- 
-    <!-- TOP RIGHT STATS HUD -->
-    <div id="stats-hud" class="hud-bar hidden" style="top: 20px; right: 20px; left: auto; transform: none; display: flex; gap: 24px; padding: 10px 20px;">
-      <div class="hud-group">
-        <span class="hud-label">SCORE</span>
-        <span id="hud-score-val" class="hud-val">0</span>
-      </div>
-      <div class="hud-group">
-        <span class="hud-label">ACCURACY</span>
-        <span id="hud-accuracy-val" class="hud-val">100%</span>
+
+      <!-- TOP RIGHT STATS HUD -->
+      <div id="stats-hud" class="hud-bar hidden">
+        <div class="hud-group">
+          <span class="hud-label">SCORE</span>
+          <span id="hud-score-val" class="hud-val">0</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">ACCURACY</span>
+          <span id="hud-accuracy-val" class="hud-val">100%</span>
+        </div>
       </div>
     </div>
  
@@ -892,11 +917,6 @@
       <span class="combo-label">COMBO</span>
       <span id="floating-combo-val">0</span>
     </div>
- 
-    <!-- HAMBURGER BUTTON (shown during gameplay) -->
-    <button id="hamburger-btn" aria-label="Menu">
-      <span></span><span></span><span></span>
-    </button>
 
     <!-- HAMBURGER DROPDOWN MENU -->
     <div id="hamburger-menu">

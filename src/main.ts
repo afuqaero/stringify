@@ -38,6 +38,7 @@ const btnRecordBack = document.getElementById('btn-record-back')!;
 const btnCalibDone = document.getElementById('btn-calib-done')!;
 
 // Game HUD Elements
+const gameHeader = document.getElementById('game-header')!;
 const recordIndicator = document.getElementById('record-indicator')!;
 const topHud = document.getElementById('top-hud')!;
 const hudSongVal = document.getElementById('hud-song-val')!;
@@ -617,6 +618,7 @@ function switchState(newState: GameState) {
   screenCalib.classList.add('hidden');
   screenPause.classList.add('hidden');
   screenComplete.classList.add('hidden');
+  gameHeader.classList.add('hidden');
   topHud.classList.add('hidden');
   statsHud.classList.add('hidden');
   floatingCombo.style.opacity = '0';
@@ -648,6 +650,7 @@ function switchState(newState: GameState) {
   }
   if (newState === GameState.PAUSED) {
     screenPause.classList.remove('hidden');
+    gameHeader.classList.remove('hidden');
     topHud.classList.remove('hidden');
     statsHud.classList.remove('hidden');
     hamburgerBtn.style.display = 'flex';
@@ -659,6 +662,7 @@ function switchState(newState: GameState) {
     }
   }
   if (newState === GameState.PLAY) {
+    gameHeader.classList.remove('hidden');
     topHud.classList.remove('hidden');
     statsHud.classList.remove('hidden');
     hamburgerBtn.style.display = 'flex';
