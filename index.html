@@ -611,9 +611,49 @@
           left: 10px;
         }
       }
+
+      /* TOAST NOTIFICATION STYLING */
+      .toast {
+        background: rgba(12, 16, 33, 0.92);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+        padding: 10px 20px;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 0.9rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 15px rgba(255, 208, 102, 0.25);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        pointer-events: auto;
+        transform: translateY(-50px);
+        opacity: 0;
+        animation: toastFadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                   toastFadeOut 0.4s ease-in 2.6s forwards;
+      }
+      .toast.error {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 15px rgba(244, 63, 94, 0.35);
+        border-color: rgba(244, 63, 94, 0.3);
+      }
+      @keyframes toastFadeIn {
+        100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      @keyframes toastFadeOut {
+        100% {
+          transform: translateY(-20px);
+          opacity: 0;
+        }
+      }
     </style>
   </head>
   <body>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 200; pointer-events: none; display: flex; flex-direction: column; gap: 10px; align-items: center;"></div>
+    
     <div id="app"></div>
     
     <!-- Title Screen -->

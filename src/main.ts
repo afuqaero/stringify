@@ -120,6 +120,29 @@ let currentSongName = "Custom Track";
 // Calibration parameters tracking
 let calibDifficultySource: 'play' | 'record' = 'play';
 
+// Custom in-game toast notifications helper
+function showNotification(message: string, isError: boolean = false) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  toast.className = `toast ${isError ? 'error' : ''}`;
+  
+  const icon = isError ? 'fa-triangle-exclamation' : 'fa-circle-check';
+  const color = isError ? 'var(--primary)' : 'var(--accent)';
+  
+  toast.innerHTML = `
+    <i class="fa-solid ${icon}" style="color: ${color};"></i>
+    <span>${message}</span>
+  `;
+  
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
+
 // Mode & Recording State
 let isRecordingMode = false;
 let recordedNotes: { time: number, lane: number, duration?: number }[] = [];
@@ -554,7 +577,7 @@ chartUpload.addEventListener('change', async (e) => {
     // Sanitize and validate incoming values
     loadedCustomChart = sanitizeChart(data);
     
-    alert("Custom Chart Loaded Successfully! Step 2 is now unlocked.");
+    showNotification("Custom Chart Loaded Successfully! Step 2 is now unlocked.");
     
     // Unlock play mode audio button
     audioUploadPlayLabel.style.opacity = '1';
@@ -563,7 +586,7 @@ chartUpload.addEventListener('change', async (e) => {
     document.getElementById('chart-upload-label')?.classList.remove('btn-accent');
   } catch (err: any) {
     console.error("Failed to parse/sanitize chart:", err);
-    alert(err?.message || "Failed to load chart JSON. Ensure it is a valid format.");
+    showNotification(err?.message || "Failed to load chart JSON. Ensure it is a valid format.", true);
     loadedCustomChart = null;
   } finally {
     chartUpload.value = '';
@@ -954,7 +977,7 @@ btnCompleteQuit.addEventListener('click', () => {
 
 function handleExportChart() {
   if (recordedNotes.length === 0) {
-    alert("No notes recorded to export yet!");
+    showNotification("No notes recorded to export yet!", true);
     return;
   }
   recordedNotes.sort((a, b) => a.time - b.time);
@@ -1295,7 +1318,7 @@ async function handleSongStart(file: File, selectedMode: 'play' | 'chart', diffi
     
   } catch (err: any) {
     console.error(err);
-    alert(err?.message || "Error loading song! Please ensure the file is valid.");
+    showNotification(err?.message || "Error loading song! Please ensure the file is valid.", true);
     switchState(GameState.HUB);
   }
 }
