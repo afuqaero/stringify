@@ -1,5 +1,7 @@
 # Stringify 🎸
 
+**Live Demo:** [https://stringify-one.vercel.app/](https://stringify-one.vercel.app/)
+
 Stringify is a premium, web-based rhythm game built with HTML, TypeScript, Vite, and Three.js. Inspired by classic games like *Guitar Hero*, Stringify delivers a fast-paced, visually stunning experience featuring high-performance 3D graphics, dynamic lighting, real-time audio synchronization, and full custom-chart creation.
 
 ---
