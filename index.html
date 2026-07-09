@@ -7,7 +7,9 @@
     <meta name="theme-color" content="#f43f5e" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stringify</title>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Pirata+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
       :root {
@@ -253,15 +255,172 @@
         gap: 5px;
         margin-top: 10px;
       }
+      .library-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 180px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        margin-bottom: 10px;
+        padding-right: 5px;
+      }
+      .library-container::-webkit-scrollbar {
+        width: 6px;
+      }
+      .library-container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+      }
+      .library-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: transparent;
+        padding: 8px 5px;
+        position: relative;
+        cursor: pointer;
+        transition: transform 0.2s;
+        border: none;
+      }
+      .library-item:hover {
+        transform: scale(1.02);
+      }
+      .gh-left {
+        display: flex;
+        flex-direction: column;
+        z-index: 2;
+        background: var(--bg-dark);
+        padding-right: 8px;
+      }
+      .gh-title {
+        font-family: 'Pirata One', cursive;
+        font-size: 1.6rem;
+        color: #e0d0b0;
+        text-shadow: 1px 1px 0 #000;
+        line-height: 1;
+        letter-spacing: 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+      }
+      .gh-sub {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.65rem;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 4px;
+      }
+      .gh-dots {
+        flex: 1;
+        border-bottom: 2px dashed #4b5e65;
+        margin: 0 5px;
+        position: relative;
+        top: 6px;
+        z-index: 1;
+      }
+      .gh-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        z-index: 2;
+        background: var(--bg-dark);
+        padding-left: 5px;
+      }
+      .gh-stars {
+        color: #c9a444;
+        font-size: 1rem;
+        text-shadow: 1px 1px 0 #000;
+        line-height: 1;
+        letter-spacing: 2px;
+      }
+      .gh-score {
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        font-size: 0.8rem;
+        color: #90a4ae;
+        margin-top: 4px;
+      }
+      .lib-actions {
+        display: flex;
+        gap: 8px;
+        margin-left: 10px;
+        z-index: 3;
+        background: var(--bg-dark);
+        padding-left: 5px;
+      }
+      .lib-action-btn {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 1.1rem;
+        transition: color 0.2s, transform 0.2s;
+        padding: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .lib-action-btn:hover { color: var(--accent); transform: scale(1.15); }
+      .lib-del-btn:hover { color: var(--primary); transform: scale(1.15); }
       
       /* SPLIT CHOICE CARDS */
       .choice-container {
         display: flex;
-        gap: 30px;
+        gap: 20px;
+        width: 100%;
         max-width: 800px;
-        width: 90%;
-        box-sizing: border-box;
+        margin-bottom: 20px;
       }
+
+      /* MODAL */
+      .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 1;
+        transition: opacity 0.3s ease;
+      }
+      .modal-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .modal-content {
+        background: var(--bg-dark);
+        border: 1px solid var(--glass-border);
+        border-radius: 15px;
+        padding: 25px;
+        width: 90%;
+        max-width: 400px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+      .modal-content h3 {
+        margin-top: 0;
+        color: #fff;
+        font-family: 'Pirata One', cursive;
+        font-size: 2.2rem;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+      }
+      .modal-content p {
+        color: var(--text-muted);
+        margin-bottom: 25px;
+        font-size: 0.95rem;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+      }
+
       .choice-card {
         flex: 1;
         background: var(--glass-bg);
@@ -428,6 +587,10 @@
         80%  { transform: scale(1.0); opacity: 1; }
         100% { transform: scale(0.7); opacity: 0; }
       }
+      @keyframes pulse {
+        0%   { transform: scale(1); text-shadow: 0 0 5px rgba(60, 162, 244, 0.4); }
+        100% { transform: scale(1.08); text-shadow: 0 0 15px rgba(60, 162, 244, 1.0); }
+      }
       .hud-group {
         display: flex;
         flex-direction: column;
@@ -527,6 +690,35 @@
         text-transform: uppercase;
         display: block;
         margin-bottom: -10px;
+      }
+      
+      /* FLOATING STAR POWER READY POPUP */
+      .floating-star-power {
+        position: absolute;
+        left: 50%;
+        top: 35%;
+        transform: translate(-50%, -50%) scale(1);
+        z-index: 25;
+        font-weight: 900;
+        font-size: 4.5rem;
+        color: #3ca2f4;
+        text-align: center;
+        pointer-events: none;
+        transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-out;
+        opacity: 0;
+        text-shadow: 0px 0px 30px rgba(60, 162, 244, 0.8), 0px 5px 15px rgba(0,0,0,0.8);
+      }
+      .floating-star-power.active {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+      }
+      .sp-label {
+        font-size: 1.2rem;
+        letter-spacing: 4px;
+        color: #ffffff;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: -5px;
       }
       
       /* CARD POPUP ENTRANCE ANIMATION */
@@ -773,18 +965,16 @@
             </div>
           </div>
           
-          <!-- Chart JSON Selector (REQUIRED for Play Mode now) -->
-          <label class="btn btn-accent" id="chart-upload-label">
-            Step 1: Load Chart JSON
-            <input type="file" id="chart-upload" accept="application/json" />
-          </label>
+          <div id="play-library-container" class="library-container">
+            <!-- Library items injected here -->
+          </div>
           
           <!-- Song Selector -->
-          <label class="btn" id="audio-upload-play-label" style="opacity: 0.5; pointer-events: none;">
-            Step 2: Select Song & Start (MP3)
+          <label class="btn btn-accent" id="audio-upload-play-label">
+            Upload New Song to Library
             <input type="file" id="audio-upload-play" accept="audio/mpeg, audio/mp3, audio/wav" />
           </label>
-          
+
           <button id="btn-calib-play" class="btn">Calibrate Controls</button>
           <button id="btn-play-back" class="btn" style="border-color: transparent; margin-top: 15px; color: var(--text-muted);">Back to Menu</button>
         </div>
@@ -804,9 +994,13 @@
             </div>
           </div>
           
-          <!-- Song Selector directly -->
+          <div id="record-library-container" class="library-container">
+            <!-- Library items injected here -->
+          </div>
+          
+          <!-- Song Selector -->
           <label class="btn btn-accent">
-            Select Song & Start (MP3)
+            Upload New Song to Library
             <input type="file" id="audio-upload-record" accept="audio/mpeg, audio/mp3, audio/wav" />
           </label>
           
@@ -921,6 +1115,12 @@
       <span id="floating-combo-val">0</span>
     </div>
 
+    <!-- FLOATING STAR POWER READY POPUP -->
+    <div id="floating-star-power" class="floating-star-power">
+      <span class="sp-label">STAR POWER</span>
+      <span><i class="fa-solid fa-bolt"></i> READY!</span>
+    </div>
+
     <!-- HAMBURGER DROPDOWN MENU -->
     <div id="hamburger-menu">
       <button id="btn-ham-resume" class="ham-menu-btn">▶&nbsp; Resume</button>
@@ -967,8 +1167,20 @@
       </div>
     </div>
     
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h3 id="confirm-title">Confirm Action</h3>
+        <p id="confirm-message">Are you sure you want to do this?</p>
+        <div class="modal-actions">
+          <button id="btn-confirm-cancel" class="btn" style="flex:1;">Cancel</button>
+          <button id="btn-confirm-ok" class="btn btn-primary" style="flex:1;">Delete</button>
+        </div>
+      </div>
+    </div>
+    
     <!-- Background Music -->
-    <audio id="bg-music" loop></audio>
+    <audio id="bg-music"></audio>
 
     <script type="module" src="/src/main.ts"></script>
     <script>

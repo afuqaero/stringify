@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { input } from './inputManager';
 import { inject } from '@vercel/analytics';
+import { saveSong, getSongList, getSongData, deleteSong } from './libraryManager';
+import { analyzeAudio } from './audioAnalyzer';
 
 // Initialize Vercel Analytics
 inject();
@@ -31,6 +33,7 @@ const audioUploadRecord = document.getElementById('audio-upload-record') as HTML
 const audioUploadPlayLabel = document.getElementById('audio-upload-play-label')!;
 
 // Buttons
+const btnStartGame = document.getElementById('btn-start-game')!;
 const btnCalibPlay = document.getElementById('btn-calib-play')!;
 const btnCalibRecord = document.getElementById('btn-calib-record')!;
 const btnPlayBack = document.getElementById('btn-play-back')!;
@@ -51,6 +54,8 @@ const hudAccuracyVal = document.getElementById('hud-accuracy-val')!;
 
 const floatingCombo = document.getElementById('floating-combo')!;
 const floatingComboVal = document.getElementById('floating-combo-val')!;
+
+const floatingStarPower = document.getElementById('floating-star-power')!;
 
 // Hamburger menu
 const hamburgerBtn = document.getElementById('hamburger-btn') as HTMLButtonElement;
@@ -75,7 +80,7 @@ const completeStars = document.getElementById('complete-stars')!;
 const btnCompleteAgain = document.getElementById('btn-complete-again')!;
 const btnCompleteQuit = document.getElementById('btn-complete-quit')!;
 
-type GameState = 'TITLE' | 'HUB' | 'CALIBRATE' | 'PLAY' | 'PAUSED' | 'COMPLETE';
+type GameState = 'TITLE' | 'HUB' | 'CALIBRATE' | 'PLAY' | 'PAUSED' | 'COMPLETE' | 'INTRO';
 const GameState = {
   TITLE: 'TITLE' as GameState,
   HUB: 'HUB' as GameState,
@@ -83,10 +88,11 @@ const GameState = {
   PLAY: 'PLAY' as GameState,
   PAUSED: 'PAUSED' as GameState,
   COMPLETE: 'COMPLETE' as GameState,
+  INTRO: 'INTRO' as GameState,
 };
 let currentState = GameState.TITLE;
 
-// Background Music — randomly pick one track per session (fixed until browser refresh)
+// Background Music
 const BG_TRACKS = [
   '/Blacktop Fever.mp3',
   '/Mirrorball Rebel.mp3',
@@ -95,10 +101,15 @@ const BG_TRACKS = [
 ];
 const bgMusic = document.getElementById('bg-music') as HTMLAudioElement;
 if (bgMusic) {
-  // Pick a random track for this session and hold it fixed
-  const sessionTrack = BG_TRACKS[Math.floor(Math.random() * BG_TRACKS.length)];
-  bgMusic.src = sessionTrack;
+  const pickRandomTrack = () => BG_TRACKS[Math.floor(Math.random() * BG_TRACKS.length)];
+  
+  bgMusic.src = pickRandomTrack();
   bgMusic.volume = 0.4; // 40% volume
+
+  bgMusic.addEventListener('ended', () => {
+    bgMusic.src = pickRandomTrack();
+    bgMusic.play().catch(() => {});
+  });
 }
 
 function triggerBgMusic(play: boolean) {
@@ -115,8 +126,11 @@ function triggerBgMusic(play: boolean) {
 // Game State variables
 let audioContext: AudioContext;
 let audioSource: AudioBufferSourceNode | null = null;
+let mainTrackGainNode: GainNode | null = null;
 let currentBuffer: AudioBuffer | null = null;
 let lastLoadedBuffer: AudioBuffer | null = null;
+let missAudioBuffer: AudioBuffer | null = null;
+let applauseAudioBuffer: AudioBuffer | null = null;
 let isPlaying = false;
 let startTime = 0;
 let pausedOffset = 0;
@@ -127,6 +141,15 @@ let totalNotesProcessed = 0;
 let currentNumLanes = 4;
 let currentNoteSpeed = 14;
 let currentSongName = "Custom Track";
+let introAnimationStartTime = 0;
+
+// Star Power State
+let isStarPowerReady = false;
+let isStarPowerActive = false;
+let starPowerTimer = 0;
+let nextStarPowerThreshold = 60;
+let fireParticles: { mesh: THREE.Mesh, life: number, maxLife: number, velocity: THREE.Vector3, initialScale: number }[] = [];
+let activeLightning: { mesh: THREE.Mesh, life: number }[] = [];
 
 // Calibration parameters tracking
 let calibDifficultySource: 'play' | 'record' = 'play';
@@ -216,6 +239,7 @@ let track: THREE.Mesh | null = null;
 let separators: THREE.Mesh[] = [];
 let receptors: THREE.Group[] = [];
 let highwayBars: THREE.Mesh[] = [];
+let fireEdges: THREE.Mesh[] = [];
 
 // Active sustain notes being held during playback
 const activeSustains: (NoteData | null)[] = [null, null, null, null, null];
@@ -294,7 +318,7 @@ function generateScene(numLanes: number) {
 
   const startX = -((numLanes - 1) / 2) * LANE_WIDTH;
 
-  // Track Left Border
+  // Track Left Border (Standard Blue)
   const leftBorderGeo = new THREE.PlaneGeometry(0.06, Math.abs(SPAWN_Z) + RECEPTOR_Z + 10);
   const leftBorderMat = new THREE.MeshBasicMaterial({ color: 0x3ca2f4, transparent: true, opacity: 0.7 });
   const leftBorder = new THREE.Mesh(leftBorderGeo, leftBorderMat);
@@ -303,7 +327,7 @@ function generateScene(numLanes: number) {
   scene.add(leftBorder);
   separators.push(leftBorder);
 
-  // Track Right Border
+  // Track Right Border (Standard Blue)
   const rightBorderGeo = new THREE.PlaneGeometry(0.06, Math.abs(SPAWN_Z) + RECEPTOR_Z + 10);
   const rightBorderMat = new THREE.MeshBasicMaterial({ color: 0x3ca2f4, transparent: true, opacity: 0.7 });
   const rightBorder = new THREE.Mesh(rightBorderGeo, rightBorderMat);
@@ -311,6 +335,30 @@ function generateScene(numLanes: number) {
   rightBorder.position.set(startX + numLanes * LANE_WIDTH - LANE_WIDTH / 2, 0.012, track.position.z);
   scene.add(rightBorder);
   separators.push(rightBorder);
+  
+  // Fire Edges (Invisible normally)
+  fireEdges.forEach(f => scene.remove(f));
+  fireEdges = [];
+  
+  const fireLeftGeo = new THREE.PlaneGeometry(0.4, Math.abs(SPAWN_Z) + RECEPTOR_Z + 10);
+  const fireMat = new THREE.MeshStandardMaterial({ 
+    color: 0x111111, 
+    emissive: 0x000000, 
+    transparent: true, 
+    opacity: 0.0 
+  });
+  const fireLeft = new THREE.Mesh(fireLeftGeo, fireMat);
+  fireLeft.rotation.x = -Math.PI / 2;
+  fireLeft.position.set(startX - LANE_WIDTH / 2 - 0.15, 0.013, track.position.z);
+  scene.add(fireLeft);
+  fireEdges.push(fireLeft);
+  
+  const fireRightGeo = new THREE.PlaneGeometry(0.4, Math.abs(SPAWN_Z) + RECEPTOR_Z + 10);
+  const fireRight = new THREE.Mesh(fireRightGeo, fireMat.clone());
+  fireRight.rotation.x = -Math.PI / 2;
+  fireRight.position.set(startX + numLanes * LANE_WIDTH - LANE_WIDTH / 2 + 0.15, 0.013, track.position.z);
+  scene.add(fireRight);
+  fireEdges.push(fireRight);
 
   // Center Lane Lines (colored neon trails)
   for (let i = 0; i < numLanes; i++) {
@@ -436,6 +484,28 @@ function createNoteGeometry(color: number) {
   group.add(noteMesh);
   group.add(innerMesh);
   return group;
+}
+
+function updateNoteColor(obj: THREE.Object3D, hex: number) {
+  obj.children.forEach(child => {
+    if (child instanceof THREE.Group || child.type === 'Group') {
+      updateNoteColor(child, hex);
+    }
+    const mesh = child as THREE.Mesh;
+    if (mesh.material) {
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      mats.forEach(m => {
+        const mat = m as THREE.MeshStandardMaterial;
+        if (mat.color && mat.emissive) {
+          // Ignore the white core and the grey dropped sustain tail
+          if (mat.color.getHex() !== 0xffffff && mat.color.getHex() !== 0x555555) {
+            mat.color.setHex(hex);
+            mat.emissive.setHex(hex);
+          }
+        }
+      });
+    }
+  });
 }
 
 // Create a complete sustain note geometry with note head and tail trail
@@ -590,32 +660,7 @@ function sanitizeChart(rawData: any): { time: number, lane: number, duration?: n
   return sanitized.sort((a, b) => a.time - b.time);
 }
 
-// Handle Custom Chart Upload (Play Mode)
-chartUpload.addEventListener('change', async (e) => {
-  const file = (e.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  try {
-    const text = await file.text();
-    // Parse JSON
-    const data = JSON.parse(text);
-    // Sanitize and validate incoming values
-    loadedCustomChart = sanitizeChart(data);
-    
-    showNotification("Custom Chart Loaded Successfully! Step 2 is now unlocked.");
-    
-    // Unlock play mode audio button
-    audioUploadPlayLabel.style.opacity = '1';
-    audioUploadPlayLabel.style.pointerEvents = 'auto';
-    audioUploadPlayLabel.classList.add('btn-accent');
-    document.getElementById('chart-upload-label')?.classList.remove('btn-accent');
-  } catch (err: any) {
-    console.error("Failed to parse/sanitize chart:", err);
-    showNotification(err?.message || "Failed to load chart JSON. Ensure it is a valid format.", true);
-    loadedCustomChart = null;
-  } finally {
-    chartUpload.value = '';
-  }
-});
+// Removed JSON Custom Chart Upload listener
 
 // Update UI state
 function switchState(newState: GameState) {
@@ -640,24 +685,23 @@ function switchState(newState: GameState) {
   if (newState === GameState.HUB) {
     screenHub.classList.remove('hidden');
     
-    // Reset back to main Play/Record choices
     hubChoiceSelect.classList.remove('hidden');
     hubPlayConfig.classList.add('hidden');
     hubRecordConfig.classList.add('hidden');
     hubLoading.classList.add('hidden');
-
-    // Reset lock state for Play Mode song upload
+    screenHub.style.display = 'flex';
+    triggerBgMusic(true);
+    renderLibrary();
     loadedCustomChart = null;
-    audioUploadPlayLabel.style.opacity = '0.5';
-    audioUploadPlayLabel.style.pointerEvents = 'none';
-    audioUploadPlayLabel.classList.remove('btn-accent');
-    document.getElementById('chart-upload-label')?.classList.add('btn-accent');
   }
   if (newState === GameState.CALIBRATE) {
     populateCalibrationUI();
     screenCalib.classList.remove('hidden');
   }
   if (newState === GameState.PAUSED) {
+    triggerBgMusic(false); // Explicitly ensure background music is off
+    if (bgMusic) bgMusic.pause(); // Double safeguard
+    
     screenPause.classList.remove('hidden');
     gameHeader.classList.remove('hidden');
     topHud.classList.remove('hidden');
@@ -670,7 +714,7 @@ function switchState(newState: GameState) {
       btnExportChart.classList.add('hidden');
     }
   }
-  if (newState === GameState.PLAY) {
+  if (newState === GameState.PLAY || newState === GameState.INTRO) {
     gameHeader.classList.remove('hidden');
     topHud.classList.remove('hidden');
     statsHud.classList.remove('hidden');
@@ -790,10 +834,6 @@ btnPlayBack.addEventListener('click', () => {
   
   // Clear any loaded chart
   loadedCustomChart = null;
-  audioUploadPlayLabel.style.opacity = '0.5';
-  audioUploadPlayLabel.style.pointerEvents = 'none';
-  audioUploadPlayLabel.classList.remove('btn-accent');
-  document.getElementById('chart-upload-label')?.classList.add('btn-accent');
 });
 btnRecordBack.addEventListener('click', () => {
   hubRecordConfig.classList.add('hidden');
@@ -837,10 +877,23 @@ btnCalibDone.addEventListener('click', () => {
 });
 
 // Countdown then resume
-function startCountdownThenResume() {
+function startCountdownThenResume(isNewSong = false) {
   let count = 3;
   countdownOverlay.classList.add('active');
   countdownNumber.textContent = String(count);
+  
+  if (isNewSong) {
+    switchState(GameState.INTRO);
+    introAnimationStartTime = performance.now();
+    playPowerUpSound();
+    
+    // Set initial scales to 0 for intro animation
+    if (track) track.scale.z = 0.001;
+    separators.forEach(sep => sep.scale.z = 0.001);
+    highwayBars.forEach(bar => bar.scale.x = 0.001);
+    receptors.forEach(rec => rec.scale.setScalar(0.001));
+  }
+  
   // Force reflow to restart animation each tick
   function tick() {
     countdownNumber.style.animation = 'none';
@@ -875,7 +928,7 @@ btnHamResume.addEventListener('click', () => {
     pauseAudio();
     switchState(GameState.PAUSED);
   } else if (currentState === GameState.PAUSED) {
-    startCountdownThenResume();
+    startCountdownThenResume(false);
   }
 });
 
@@ -906,7 +959,7 @@ document.addEventListener('click', (e) => {
 
 // Old pause screen resume/quit (keep for compatibility)
 btnResume.addEventListener('click', () => {
-  startCountdownThenResume();
+  startCountdownThenResume(false);
 });
 btnQuit.addEventListener('click', () => {
   stopAudio();
@@ -985,6 +1038,12 @@ function showCompleteScreen() {
     else if (acc >= 90) stars = 4;
     else if (acc >= 75) stars = 3;
     else if (acc >= 60) stars = 2;
+
+    const currentHighScore = parseInt(localStorage.getItem(`highscore_${currentSongName}`) || '0', 10);
+    if (score > currentHighScore) {
+      localStorage.setItem(`highscore_${currentSongName}`, Math.round(score).toString());
+      localStorage.setItem(`stars_${currentSongName}`, stars.toString());
+    }
 
     for (let s = 0; s < stars; s++) {
       setTimeout(() => {
@@ -1072,6 +1131,12 @@ function handleExportChart() {
     return;
   }
   recordedNotes.sort((a, b) => a.time - b.time);
+  
+  try {
+    localStorage.setItem(`chart_${currentSongName}`, JSON.stringify(recordedNotes));
+    showNotification("Chart saved locally!", false);
+  } catch(e) {}
+  
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(recordedNotes, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
@@ -1185,7 +1250,12 @@ function playAudio() {
   if (!currentBuffer) return;
   audioSource = audioContext.createBufferSource();
   audioSource.buffer = currentBuffer;
-  audioSource.connect(audioContext.destination);
+  
+  mainTrackGainNode = audioContext.createGain();
+  mainTrackGainNode.gain.value = isStarPowerActive ? 0.65 : 1.0;
+  
+  audioSource.connect(mainTrackGainNode);
+  mainTrackGainNode.connect(audioContext.destination);
   
   if (pausedOffset === 0) {
     startTime = audioContext.currentTime + 2; 
@@ -1222,6 +1292,12 @@ function updateComboUI() {
   } else {
     floatingCombo.style.opacity = '0';
     floatingCombo.classList.remove('combo-pop');
+    
+    if (!isStarPowerActive) {
+      nextStarPowerThreshold = 60;
+      isStarPowerReady = false;
+      floatingStarPower.classList.remove('active');
+    }
   }
 }
 
@@ -1247,6 +1323,13 @@ function stopAudio() {
   recordingPressStartTimes.fill(-1);
   recordingVisualSustains.fill(null);
   activeSustains.fill(null);
+  
+  // Reset Star Power
+  isStarPowerReady = false;
+  isStarPowerActive = false;
+  starPowerTimer = 0;
+  nextStarPowerThreshold = 60;
+  floatingStarPower.classList.remove('active');
   
   hudScoreVal.innerText = score.toString();
   updateComboUI();
@@ -1278,15 +1361,17 @@ function checkHit(lane: number) {
         // Snap the note's group position directly to the receptor's X/Y/Z position
         note.group.position.set(receptors[lane].position.x, receptors[lane].position.y, RECEPTOR_Z);
         
+        const multiplier = isStarPowerActive ? 2 : 1;
+        
         if (note.duration && note.duration > 0.15) {
           activeSustains[lane] = note;
-          score += 15;
+          score += 15 * multiplier;
           combo++;
           hudScoreVal.innerText = Math.round(score).toString();
           updateComboUI();
         } else {
           note.animating = true;
-          score += 10 + (combo * 2);
+          score += (10 + (combo * 2)) * multiplier;
           combo++;
           totalHits++;
           totalNotesProcessed++;
@@ -1294,6 +1379,14 @@ function checkHit(lane: number) {
           hudScoreVal.innerText = Math.round(score).toString();
           updateComboUI();
           updateAccuracy();
+        }
+        
+        if (!isStarPowerActive && combo >= nextStarPowerThreshold && !isStarPowerReady) {
+          isStarPowerReady = true;
+          floatingStarPower.classList.add('active');
+          setTimeout(() => {
+            floatingStarPower.classList.remove('active');
+          }, 3000);
         }
         
         spawnParticles(receptors[lane].position, COLORS[lane % COLORS.length]);
@@ -1308,12 +1401,13 @@ function checkHit(lane: number) {
     }
   }
   
+  playMissSound();
   combo = 0;
   updateComboUI();
 }
 
 // Single core song upload handler
-async function handleSongStart(file: File, selectedMode: 'play' | 'chart', difficulty: string) {
+async function handleSongStart(songName: string, arrayBuffer: ArrayBuffer, selectedMode: 'play' | 'chart', difficulty: string) {
   // Turn off background music immediately when loading starts
   triggerBgMusic(false);
   
@@ -1336,9 +1430,7 @@ async function handleSongStart(file: File, selectedMode: 'play' | 'chart', diffi
     else currentNoteSpeed = 20;
 
     // Track Name
-    currentSongName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-
-    const arrayBuffer = await file.arrayBuffer();
+    currentSongName = songName;
     
     if (!audioContext) {
       audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -1357,14 +1449,16 @@ async function handleSongStart(file: File, selectedMode: 'play' | 'chart', diffi
       const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
       currentBuffer = decodedBuffer;
       lastLoadedBuffer = decodedBuffer;
+      localStorage.setItem(`duration_${currentSongName}`, decodedBuffer.duration.toString());
     } else {
       if (!loadedCustomChart) {
-        throw new Error("No custom chart loaded! You must upload a JSON chart in Step 1.");
+        throw new Error("No chart loaded. Please record a chart for this song first.");
       }
       const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
       currentBuffer = decodedBuffer;
       lastLoadedBuffer = decodedBuffer;
       chartNotes = loadedCustomChart;
+      localStorage.setItem(`duration_${currentSongName}`, decodedBuffer.duration.toString());
     }
 
     generateScene(numLanes);
@@ -1408,8 +1502,7 @@ async function handleSongStart(file: File, selectedMode: 'play' | 'chart', diffi
     hudAccuracyVal.innerText = "100%";
     
     // Reset Hub displays
-    switchState(GameState.PLAY);
-    playAudio();
+    startCountdownThenResume(true);
     
   } catch (err: any) {
     console.error(err);
@@ -1422,16 +1515,173 @@ async function handleSongStart(file: File, selectedMode: 'play' | 'chart', diffi
 audioUploadPlay.addEventListener('change', async (e) => {
   const file = (e.target as HTMLInputElement).files?.[0];
   if (!file) return;
-  await handleSongStart(file, 'play', difficultySelectPlayValue);
+
+  const songName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+  
+  const arrayBuffer = await file.arrayBuffer();
+  await saveSong(songName, arrayBuffer.slice(0)); // Save to IndexedDB Library
+  renderLibrary();
+
+  if (loadedCustomChart) {
+    localStorage.setItem(`chart_${songName}`, JSON.stringify(loadedCustomChart));
+  } else {
+    try {
+      const savedChartStr = localStorage.getItem(`chart_${songName}`);
+      if (savedChartStr) {
+        loadedCustomChart = sanitizeChart(JSON.parse(savedChartStr));
+        showNotification("Loaded previously saved chart!");
+      }
+    } catch(err) {}
+  }
+
+  if (!loadedCustomChart) {
+    showNotification("Song added! Switch to Record Mode to create a chart for it.", false);
+    audioUploadPlay.value = '';
+    return;
+  }
+
+  await handleSongStart(songName, arrayBuffer, 'play', difficultySelectPlayValue);
   audioUploadPlay.value = '';
 });
 
 audioUploadRecord.addEventListener('change', async (e) => {
   const file = (e.target as HTMLInputElement).files?.[0];
   if (!file) return;
-  await handleSongStart(file, 'chart', difficultySelectRecordValue);
+  const songName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+  const arrayBuffer = await file.arrayBuffer();
+  await saveSong(songName, arrayBuffer.slice(0)); // Save to IndexedDB Library
+  renderLibrary();
+
+  await handleSongStart(songName, arrayBuffer, 'chart', difficultySelectRecordValue);
   audioUploadRecord.value = '';
 });
+
+async function renderLibrary() {
+  const songs = await getSongList();
+  const playContainer = document.getElementById('play-library-container');
+  const recordContainer = document.getElementById('record-library-container');
+  if (!playContainer || !recordContainer) return;
+
+  const buildLibraryHTML = (mode: 'play' | 'chart') => {
+    if (songs.length === 0) return '<div style="color:var(--text-muted); font-size:0.9rem; text-align:center; margin:10px 0;">No songs in library</div>';
+    return songs.map(song => {
+      const highscore = localStorage.getItem(`highscore_${song}`) || '0';
+      const starsNum = parseInt(localStorage.getItem(`stars_${song}`) || '0', 10);
+      const durationSec = parseFloat(localStorage.getItem(`duration_${song}`) || '0');
+      
+      let durationStr = '--:--';
+      if (durationSec > 0) {
+        const mins = Math.floor(durationSec / 60);
+        const secs = Math.floor(durationSec % 60).toString().padStart(2, '0');
+        durationStr = `${mins}:${secs}`;
+      }
+      
+      const starsStr = starsNum > 0 ? '⭐'.repeat(starsNum) : '<span style="opacity:0.2">⭐⭐⭐⭐⭐</span>';
+
+      const hasChart = !!localStorage.getItem(`chart_${song}`);
+      const chartIcon = hasChart ? '<i class="fa-solid fa-file-circle-check" style="color:var(--accent)" title="Chart Ready"></i>' : '<i class="fa-solid fa-file-circle-xmark" style="color:#f43f5e" title="No Chart"></i>';
+
+      return `
+      <div class="library-item gh-style">
+        <div class="gh-left">
+          <div class="gh-title" title="${song}">${song}</div>
+          <div class="gh-sub">LENGTH: ${durationStr} &nbsp; ${chartIcon}</div>
+        </div>
+        <div class="gh-dots"></div>
+        <div class="gh-right">
+          <div class="gh-stars">${starsStr}</div>
+          <div class="gh-score">${parseInt(highscore).toLocaleString()}</div>
+        </div>
+        <div class="lib-actions">
+          ${mode === 'play' ? `
+          <label class="lib-action-btn" title="Upload JSON Chart" style="cursor:pointer; margin-bottom:0;">
+            <i class="fa-solid fa-file-arrow-up"></i>
+            <input type="file" class="lib-upload-json" data-song="${song}" accept=".json" style="display:none;" />
+          </label>
+          ` : ''}
+          <button class="lib-action-btn lib-play-btn" data-song="${song}" data-mode="${mode}" title="${mode === 'play' ? 'Play' : 'Record'}"><i class="fa-solid fa-${mode === 'play' ? 'play' : 'circle-dot'}"></i></button>
+          <button class="lib-action-btn lib-del-btn" data-song="${song}" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+      `;
+    }).join('');
+  };
+
+  playContainer.innerHTML = buildLibraryHTML('play');
+  recordContainer.innerHTML = buildLibraryHTML('chart');
+
+  // Add event listeners
+  document.querySelectorAll('.lib-play-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const songName = target.dataset.song!;
+      const mode = target.dataset.mode as 'play' | 'chart';
+      const difficulty = mode === 'play' ? difficultySelectPlayValue : difficultySelectRecordValue;
+      
+      const arrayBuffer = await getSongData(songName);
+      if (!arrayBuffer) {
+        showNotification("Failed to load song from library.", true);
+        return;
+      }
+      
+      if (mode === 'play') {
+        if (loadedCustomChart) {
+          // Bind manually uploaded chart to this song in localStorage permanently
+          localStorage.setItem(`chart_${songName}`, JSON.stringify(loadedCustomChart));
+        } else {
+          try {
+            const savedChartStr = localStorage.getItem(`chart_${songName}`);
+            if (savedChartStr) {
+              loadedCustomChart = sanitizeChart(JSON.parse(savedChartStr));
+            }
+          } catch(err) {}
+        }
+        
+        if (!loadedCustomChart) {
+          showNotification("Please record a chart for this music first.", true);
+          return;
+        }
+      }
+
+      await handleSongStart(songName, arrayBuffer.slice(0), mode, difficulty);
+    });
+  });
+
+  document.querySelectorAll('.lib-upload-json').forEach(input => {
+    input.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      const songName = target.dataset.song!;
+      const file = target.files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const sanitized = sanitizeChart(data);
+        localStorage.setItem(`chart_${songName}`, JSON.stringify(sanitized));
+        showNotification(`Chart saved for ${songName}!`);
+        renderLibrary();
+      } catch (err: any) {
+        showNotification(err?.message || "Invalid JSON format.", true);
+      } finally {
+        target.value = '';
+      }
+    });
+  });
+
+  document.querySelectorAll('.lib-del-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const songName = target.dataset.song!;
+      const confirmed = await showConfirmModal("Delete Song", `Are you sure you want to delete '${songName}' from your library?`);
+      if (confirmed) {
+        await deleteSong(songName);
+        renderLibrary();
+      }
+    });
+  });
+}
+
 
 let lastTime = performance.now();
 
@@ -1440,6 +1690,153 @@ function animate() {
   const now = performance.now();
   const dt = (now - lastTime) / 1000;
   lastTime = now;
+
+  // Intro Animation Logic
+  if (introAnimationStartTime > 0) {
+    const introDuration = 2500; // 2.5s
+    const elapsed = now - introAnimationStartTime;
+    
+    // 1. Highway slowly comes into view (0 to 1000ms)
+    const highwayProgress = Math.max(0, Math.min(1.0, elapsed / 1000));
+    const highwayEase = 1 - Math.pow(1 - highwayProgress, 3); // cubic ease out
+
+    if (track) {
+      track.scale.z = Math.max(0.001, highwayEase);
+      track.position.z = -50 + (50 * highwayEase);
+    }
+    separators.forEach(sep => {
+      sep.scale.z = Math.max(0.001, highwayEase);
+    });
+    highwayBars.forEach(bar => {
+      bar.scale.x = Math.max(0.001, highwayEase);
+    });
+    
+    // 2. Keys jumping from left to right (Starts at 800ms)
+    const keysElapsed = Math.max(0, elapsed - 800);
+    
+    receptors.forEach((rec, i) => {
+      const delay = i * 150; // 150ms delay per lane
+      const t = Math.max(0, keysElapsed - delay) / 1000.0; // local time in seconds
+      
+      let jumpY = 0;
+      let scale = 0.001;
+      
+      if (t > 0) {
+        scale = Math.min(1.0, t / 0.2); // Scale pops in over 0.2s
+        
+        // Jump twice: each jump takes 0.35s (total 0.7s)
+        if (t < 0.7) {
+          jumpY = Math.abs(Math.sin(t * Math.PI / 0.35)) * 0.6; // jump height 0.6
+        }
+      }
+      
+      rec.scale.setScalar(scale);
+      rec.position.y = 0.05 + jumpY;
+    });
+
+    if (elapsed >= introDuration) {
+      introAnimationStartTime = 0; // done
+      receptors.forEach(rec => {
+        rec.scale.setScalar(1.0);
+        rec.position.y = 0.05;
+      });
+    }
+  }
+
+  // Star Power trigger and visual logic
+  if (input.keysDown.has(' ') && !input.prevKeysDown.has(' ') && isStarPowerReady && !isStarPowerActive && isPlaying && currentState === GameState.PLAY) {
+    isStarPowerReady = false;
+    isStarPowerActive = true;
+    starPowerTimer = 10;
+    nextStarPowerThreshold = combo + 70;
+    playStarPowerSound();
+    
+    floatingStarPower.classList.remove('active');
+    
+    activeNotes.forEach(n => {
+       updateNoteColor(n.group, 0xff5500); // Fiery orange
+    });
+  }
+  
+  if (isStarPowerActive) {
+    starPowerTimer -= dt;
+    if (starPowerTimer <= 0) {
+      isStarPowerActive = false;
+      
+      if (track) {
+         (track.material as THREE.MeshStandardMaterial).emissive.setHex(0x000000);
+         (track.material as THREE.MeshStandardMaterial).color.setHex(0x0c0f24);
+      }
+      
+      // Revert visual effects
+      fireEdges.forEach(f => {
+        (f.material as THREE.MeshStandardMaterial).opacity = 0;
+        (f.material as THREE.MeshStandardMaterial).emissive.setHex(0x000000);
+      });
+      
+      activeNotes.forEach(n => {
+         updateNoteColor(n.group, COLORS[n.lane % COLORS.length]);
+      });
+      
+      // Restore music volume
+      if (mainTrackGainNode && audioContext) {
+        mainTrackGainNode.gain.cancelScheduledValues(audioContext.currentTime);
+        mainTrackGainNode.gain.linearRampToValueAtTime(1.0, audioContext.currentTime + 1.0);
+      }
+    } else {
+      if (track) {
+         (track.material as THREE.MeshStandardMaterial).emissive.setHex(0x331100);
+         (track.material as THREE.MeshStandardMaterial).color.setHex(0x331100);
+      }
+      
+      // Intense fire red glow for outer edges ONLY, with flickering
+      const fireRed = new THREE.Color(0xff3300);
+      const flicker = 8.0 + Math.random() * 4.0; 
+      
+      fireEdges.forEach(f => {
+        (f.material as THREE.MeshStandardMaterial).opacity = 0.85;
+        (f.material as THREE.MeshStandardMaterial).emissive.copy(fireRed);
+        (f.material as THREE.MeshStandardMaterial).emissiveIntensity = flicker;
+      });
+      
+      // Spawn animated fire particles rapidly
+      for (let i = 0; i < 4; i++) {
+        spawnFireParticle(true);
+        spawnFireParticle(false);
+      }
+    }
+  }
+
+  // Update Fire Particles
+  for (let i = fireParticles.length - 1; i >= 0; i--) {
+    const p = fireParticles[i];
+    p.life -= dt;
+    if (p.life <= 0) {
+      scene.remove(p.mesh);
+      if (p.mesh.geometry) p.mesh.geometry.dispose();
+      if (p.mesh.material) (p.mesh.material as THREE.Material).dispose();
+      fireParticles.splice(i, 1);
+    } else {
+      p.mesh.position.addScaledVector(p.velocity, dt);
+      
+      // Shrink and fade
+      const progress = p.life / p.maxLife; // 1 to 0
+      p.mesh.scale.setScalar(progress * p.initialScale);
+      
+      const mat = p.mesh.material as THREE.MeshBasicMaterial;
+      if (mat) {
+        mat.opacity = progress;
+        // Shift color towards deep red as it dies
+        if (progress < 0.5) {
+           mat.color.lerp(new THREE.Color(0xff0000), dt * 5);
+        }
+      }
+      
+      // Chaotic spin
+      p.mesh.rotation.x += dt * 5;
+      p.mesh.rotation.y += dt * 5;
+    }
+  }
 
   // Scroll highway bars (both modes flow Up-to-Down)
   if (isPlaying && currentState === GameState.PLAY) {
@@ -1467,7 +1864,8 @@ function animate() {
   } else if (currentState === GameState.PAUSED && pauseTriggered) {
     hamburgerMenu.classList.remove('open');
     hamburgerBtn.classList.remove('open');
-    startCountdownThenResume();
+    generateScene(numLanes);
+    startCountdownThenResume(true);
   }
 
   if (currentState === GameState.TITLE) {
@@ -1634,7 +2032,8 @@ function animate() {
       if (activeNote) {
         if (input.isLaneDown(i)) {
           // Accumulate sustain hold points
-          score += dt * 35; 
+          const multiplier = isStarPowerActive ? 2 : 1;
+          score += dt * 35 * multiplier; 
           hudScoreVal.innerText = Math.round(score).toString();
           
           if (Math.random() < 0.15) {
@@ -1734,22 +2133,15 @@ function animate() {
       if (timeDiff < -0.2 && !note.hit) {
         note.hit = true;
         
-        // For sustain notes, check complete miss after duration passed
-        if (note.duration && note.duration > 0.15) {
-          if (currentTime > note.time + note.duration + 0.15) {
-            scene.remove(note.group);
-            combo = 0;
-            totalNotesProcessed++;
-            updateComboUI();
-            updateAccuracy();
-          }
-        } else {
+        playMissSound();
+        combo = 0;
+        totalNotesProcessed++;
+        updateComboUI();
+        updateAccuracy();
+        
+        if (!(note.duration && note.duration > 0.15)) {
           // Tap note complete miss
           scene.remove(note.group);
-          combo = 0;
-          totalNotesProcessed++;
-          updateComboUI();
-          updateAccuracy();
         }
       }
     });
@@ -1791,6 +2183,160 @@ function animate() {
   input.update();
 }
 
+
+// Spawn animated fire particle for the highway edges
+function spawnFireParticle(isLeftEdge: boolean) {
+  const laneSpan = (currentNumLanes * LANE_WIDTH);
+  const x = (isLeftEdge ? -1 : 1) * (laneSpan / 2 + 0.15);
+  // Spawn randomly along the Z axis of the highway
+  const z = Math.random() * (Math.abs(SPAWN_Z) + RECEPTOR_Z + 10) + SPAWN_Z;
+  
+  // 3D fire ember geometry
+  const geo = new THREE.TetrahedronGeometry(0.15 + Math.random() * 0.15, 0);
+  
+  // Colors range from bright yellow to deep orange/red
+  const color = new THREE.Color();
+  const rand = Math.random();
+  if (rand > 0.6) color.setHex(0xffaa00); // Yellow/Orange
+  else if (rand > 0.3) color.setHex(0xff5500); // Orange
+  else color.setHex(0xff1100); // Red
+  
+  const mat = new THREE.MeshBasicMaterial({ 
+    color: color, 
+    transparent: true, 
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending
+  });
+  
+  const mesh = new THREE.Mesh(geo, mat);
+  
+  // Random X jitter for thickness
+  mesh.position.set(x + (Math.random() - 0.5) * 0.5, 0.1 + Math.random() * 0.3, z);
+  
+  // Random initial rotation
+  mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+  
+  scene.add(mesh);
+  
+  const maxLife = 0.3 + Math.random() * 0.2;
+  fireParticles.push({
+    mesh,
+    life: maxLife,
+    maxLife,
+    velocity: new THREE.Vector3(
+      (Math.random() - 0.5) * 2.0, // X drift
+      2.0 + Math.random() * 4.0,   // Y shoot up
+      -5.0 - Math.random() * 15.0  // Z shoot back
+    ),
+    initialScale: 0.5 + Math.random() * 1.5
+  });
+}
+
+// Synthesized Power Up Sound for Intro Animation
+function playPowerUpSound() {
+  try {
+    const ctx = audioContext || new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!ctx) return;
+    
+    fetch('startup.mp3')
+      .then(res => res.arrayBuffer())
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(audioBuffer => {
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = 0.8;
+        
+        source.connect(gainNode);
+        gainNode.connect(mainTrackGainNode || ctx.destination);
+        source.start(0);
+      })
+      .catch(e => console.error("Error playing startup sound:", e));
+  } catch (e) {
+    // Ignore context errors
+  }
+}
+
+// Star Power activation sound effect (Lightning + Loaded Applause)
+function playStarPowerSound() {
+  try {
+    const ctx = audioContext || new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!ctx) return;
+    
+    // Duck main track volume (slightly reduced, not fully muted)
+    if (mainTrackGainNode) {
+      mainTrackGainNode.gain.cancelScheduledValues(ctx.currentTime);
+      mainTrackGainNode.gain.linearRampToValueAtTime(0.65, ctx.currentTime + 0.5);
+    }
+    
+    const now = ctx.currentTime;
+    
+    // --- Epic Lightning Crash ---
+    const bufferSize = ctx.sampleRate * 2.0; 
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.setValueAtTime(1000, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(100, now + 1.5);
+    
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(2.0, now); // LOUDER
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+    
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + 2);
+
+    // --- Load and Play Real Crowd Applause ---
+    const playApplause = () => {
+      if (!applauseAudioBuffer) return;
+      const source = ctx.createBufferSource();
+      source.buffer = applauseAudioBuffer;
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 1.8; // Make it loud
+      
+      // Fade it out towards the end of star power (10 seconds)
+      gainNode.gain.setValueAtTime(1.8, now + 8);
+      gainNode.gain.linearRampToValueAtTime(0, now + 10);
+      
+      source.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      source.start(now);
+      source.stop(now + 10);
+    };
+
+    if (!applauseAudioBuffer) {
+      fetch('applause.mp3')
+        .then(res => res.arrayBuffer())
+        .then(buf => ctx.decodeAudioData(buf))
+        .then(ab => {
+          applauseAudioBuffer = ab;
+          playApplause();
+        }).catch(e => console.error(e));
+    } else {
+      playApplause();
+    }
+    
+    // Schedule restoring volume
+    if (mainTrackGainNode) {
+      mainTrackGainNode.gain.setValueAtTime(0.65, now + 10);
+      mainTrackGainNode.gain.linearRampToValueAtTime(1.0, now + 11);
+    }
+    
+  } catch (e) {}
+}
+
 // Bubbly Hover Sound effect
 function playBubbleSound() {
   try {
@@ -1812,6 +2358,46 @@ function playBubbleSound() {
     
     osc.start(now);
     osc.stop(now + 0.09);
+  } catch (e) {}
+}
+
+// Missed Note Sound effect with variants from file
+function playMissSound() {
+  try {
+    const ctx = audioContext || new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!ctx) return;
+    
+    const playVariant = () => {
+      if (!missAudioBuffer) return;
+      const source = ctx.createBufferSource();
+      source.buffer = missAudioBuffer;
+      
+      // Select a random variant slice from the ~3 second file
+      const offsets = [0, 0.6, 1.2, 1.8, 2.4];
+      const offset = offsets[Math.floor(Math.random() * offsets.length)];
+      const duration = 0.6; 
+      
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0.7;
+      
+      source.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      source.start(0, offset, duration);
+    };
+
+    if (!missAudioBuffer) {
+      fetch('miss.mp3')
+        .then(res => res.arrayBuffer())
+        .then(buf => ctx.decodeAudioData(buf))
+        .then(audioBuffer => {
+          missAudioBuffer = audioBuffer;
+          playVariant();
+        })
+        .catch(e => console.error("Error loading miss sound:", e));
+    } else {
+      playVariant();
+    }
   } catch (e) {}
 }
 
@@ -1864,5 +2450,43 @@ const unlockAudio = () => {
   window.removeEventListener('click', unlockAudio);
   window.removeEventListener('keydown', unlockAudio);
 };
-window.addEventListener('click', unlockAudio);
+
+window.addEventListener('click', (e) => {
+  unlockAudio();
+  // Ensure document body gets focus for keyboard inputs
+  document.body.focus();
+});
 window.addEventListener('keydown', unlockAudio);
+
+btnStartGame.addEventListener('click', () => {
+  if (currentState === GameState.TITLE) {
+    switchState(GameState.HUB);
+  }
+});
+
+// Utility: Custom Confirm Modal
+async function showConfirmModal(title: string, message: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirm-modal')!;
+    const titleEl = document.getElementById('confirm-title')!;
+    const messageEl = document.getElementById('confirm-message')!;
+    const btnCancel = document.getElementById('btn-confirm-cancel')!;
+    const btnOk = document.getElementById('btn-confirm-ok')!;
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    modal.classList.remove('hidden');
+
+    const cleanup = () => {
+      btnCancel.removeEventListener('click', onCancel);
+      btnOk.removeEventListener('click', onOk);
+      modal.classList.add('hidden');
+    };
+
+    const onCancel = () => { cleanup(); resolve(false); };
+    const onOk = () => { cleanup(); resolve(true); };
+
+    btnCancel.addEventListener('click', onCancel);
+    btnOk.addEventListener('click', onOk);
+  });
+}
