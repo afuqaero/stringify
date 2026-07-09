@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { input } from './inputManager';
+import { inject } from '@vercel/analytics';
+
+// Initialize Vercel Analytics
+inject();
 
 // Screen Elements
 const screenTitle = document.getElementById('screen-title')!;
@@ -1405,9 +1409,16 @@ function animate() {
   // Scroll highway bars
   if (isPlaying && currentState === GameState.PLAY) {
     highwayBars.forEach(bar => {
-      bar.position.z += dt * currentNoteSpeed;
-      if (bar.position.z > RECEPTOR_Z + 5) {
-        bar.position.z = SPAWN_Z;
+      if (isRecordingMode) {
+        bar.position.z -= dt * currentNoteSpeed;
+        if (bar.position.z < SPAWN_Z) {
+          bar.position.z = RECEPTOR_Z;
+        }
+      } else {
+        bar.position.z += dt * currentNoteSpeed;
+        if (bar.position.z > RECEPTOR_Z + 5) {
+          bar.position.z = SPAWN_Z;
+        }
       }
     });
   }
@@ -1569,16 +1580,22 @@ function animate() {
           // Update visual count
           hudNotesVal.innerText = `${recordedNotes.length} notes`;
           
-          // Transfer visual sustain to normal floating notes so it fades out
+          // Transfer visual sustain to normal floating notes so it scrolls away
           const group = recordingVisualSustains[i];
           if (group) {
+            if (finalDuration === 0) {
+              // Tap note: clean up placeholder tail/cap
+              while (group.children.length > 1) {
+                group.remove(group.children[1]);
+              }
+            }
             activeNotes.push({
               time: pressStart,
               lane: i,
               duration: finalDuration,
               group: group,
-              hit: true,
-              animating: true,
+              hit: false,
+              animating: false,
               scale: 1.0
             });
           }
@@ -1658,6 +1675,18 @@ function animate() {
     }
 
     activeNotes.forEach(note => {
+      if (isRecordingMode) {
+        // RECORD MODE NOTE MOVEMENT (Down to Up)
+        const elapsed = currentTime - note.time;
+        const noteZ = RECEPTOR_Z - (elapsed * currentNoteSpeed);
+        note.group.position.z = noteZ;
+        
+        if (noteZ < SPAWN_Z) {
+          scene.remove(note.group);
+        }
+        return;
+      }
+
       if (note.animating) {
         note.scale -= dt * 4.5;
         if (note.scale <= 0) {
