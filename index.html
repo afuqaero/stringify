@@ -756,28 +756,28 @@
         
         <div style="font-size: 0.95rem; line-height: 1.5; color: var(--text-muted); margin-bottom: 20px;">
           <p style="margin-bottom: 12px; color: #ffffff; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-file-code" style="color: var(--accent);"></i> 1. Get a Chart JSON file
+            <i class="fa-solid fa-file-signature" style="color: var(--accent);"></i> 1. Create your Chart JSON
           </p>
-          <ul style="padding-left: 20px; margin: 0 0 16px 0; color: var(--text-muted);">
-            <li style="margin-bottom: 6px;">Create one yourself in <strong>Record Mode</strong> by uploading an MP3 and tapping keys in real-time, then exporting.</li>
-            <li style="margin-bottom: 12px;">Or instantly download our pre-made generic chart loop:</li>
-          </ul>
+          <p style="margin-bottom: 12px; color: var(--text-muted);">
+            To play, you need a custom note chart matching your song. We do not provide pre-made charts. You can easily record one yourself in real-time by tapping along to your music:
+          </p>
           
-          <a href="/sample_chart.json" download="sample_chart.json" id="btn-download-sample" class="btn btn-accent" style="padding: 10px; font-size: 0.9rem; margin-bottom: 15px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; box-sizing: border-box;">
-            <i class="fa-solid fa-download"></i> Download Sample Chart JSON
-          </a>
+          <button id="btn-goto-record" class="btn btn-accent" style="padding: 10px; font-size: 0.9rem; margin-bottom: 15px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i class="fa-solid fa-microphone"></i> Go to Record Mode
+          </button>
           
           <p style="margin-bottom: 8px; color: #ffffff; font-weight: 700; margin-top: 20px; display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-circle-play" style="color: var(--primary);"></i> 2. Load & Play
+            <i class="fa-solid fa-circle-play" style="color: var(--primary);"></i> 2. Have a Chart JSON ready?
           </p>
-          <ul style="padding-left: 20px; margin: 0; color: var(--text-muted);">
-            <li style="margin-bottom: 6px;">Select the JSON chart in <strong>Step 1</strong>.</li>
-            <li style="margin-bottom: 6px;">Upload the matching MP3 file in <strong>Step 2</strong>.</li>
-            <li>Press keys as notes hit targets! (Configure keys in <strong>Calibrate Controls</strong>).</li>
-          </ul>
+          <p style="margin-bottom: 12px; color: var(--text-muted);">
+            If you already recorded and exported your chart JSON, you can proceed directly to upload it and start playing.
+          </p>
         </div>
         
-        <button id="btn-close-guide" class="btn" style="margin-top: 15px; background: var(--primary); border: none; color: white;">Got it, let's play!</button>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button id="btn-close-guide" class="btn btn-accent" style="flex: 1; margin: 0; background: var(--primary); border: none; color: white;">Play Now</button>
+          <button id="btn-cancel-guide" class="btn" style="flex: 1; margin: 0; color: var(--text-muted);">Cancel</button>
+        </div>
       </div>
     </div>
     

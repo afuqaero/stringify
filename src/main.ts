@@ -659,6 +659,16 @@ document.getElementById('btn-close-guide')?.addEventListener('click', () => {
   hubPlayConfig.classList.remove('hidden');
 });
 
+document.getElementById('btn-goto-record')?.addEventListener('click', () => {
+  document.getElementById('play-guide-modal')?.classList.add('hidden');
+  hubChoiceSelect.classList.add('hidden');
+  hubRecordConfig.classList.remove('hidden');
+});
+
+document.getElementById('btn-cancel-guide')?.addEventListener('click', () => {
+  document.getElementById('play-guide-modal')?.classList.add('hidden');
+});
+
 
 cardChoiceRecord.addEventListener('click', () => {
   hubChoiceSelect.classList.add('hidden');
