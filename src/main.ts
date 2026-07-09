@@ -1866,8 +1866,7 @@ function animate() {
   } else if (currentState === GameState.PAUSED && pauseTriggered) {
     hamburgerMenu.classList.remove('open');
     hamburgerBtn.classList.remove('open');
-    generateScene(numLanes);
-    startCountdownThenResume(true);
+    startCountdownThenResume(false);
   }
 
   if (currentState === GameState.TITLE) {
