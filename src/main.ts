@@ -888,14 +888,18 @@ btnQuit.addEventListener('click', () => {
 
 function showCompleteScreen() {
   if (isPlaying && audioSource) {
-    audioSource.stop();
+    try {
+      audioSource.stop();
+    } catch (e) {
+      // Audio already ended naturally
+    }
     audioSource = null;
   }
   isPlaying = false;
 
   const titleSub = screenComplete.querySelector('.menu-subtitle') as HTMLElement;
   const titleH2 = screenComplete.querySelector('h2') as HTMLElement;
-  const statsSummary = screenComplete.querySelector('.card > div:nth-of-type(2)') as HTMLElement;
+  const statsSummary = document.getElementById('complete-stats-summary') as HTMLElement;
   const exportBtn = document.getElementById('btn-complete-export')!;
   const againBtn = document.getElementById('btn-complete-again')!;
   
@@ -1196,7 +1200,11 @@ function updateComboUI() {
 
 function stopAudio() {
   if (isPlaying && audioSource) {
-    audioSource.stop();
+    try {
+      audioSource.stop();
+    } catch (e) {
+      // Audio already ended naturally
+    }
     audioSource = null;
   }
   isPlaying = false;
