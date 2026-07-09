@@ -86,9 +86,16 @@ const GameState = {
 };
 let currentState = GameState.TITLE;
 
-// Background Music
+// Background Music — randomly pick one track per session (fixed until browser refresh)
+const BG_TRACKS = [
+  '/Blacktop Fever.mp3',
+  '/Mirrorball Rebel.mp3',
+];
 const bgMusic = document.getElementById('bg-music') as HTMLAudioElement;
 if (bgMusic) {
+  // Pick a random track for this session and hold it fixed
+  const sessionTrack = BG_TRACKS[Math.floor(Math.random() * BG_TRACKS.length)];
+  bgMusic.src = sessionTrack;
   bgMusic.volume = 0.2; // 20% volume
 }
 
@@ -96,7 +103,7 @@ function triggerBgMusic(play: boolean) {
   if (!bgMusic) return;
   if (play) {
     bgMusic.play().catch(() => {
-      // Catch autoplay block
+      // Catch autoplay block — will play on first user interaction
     });
   } else {
     bgMusic.pause();
