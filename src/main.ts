@@ -168,6 +168,19 @@ const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerH
 camera.position.set(0, 3.5, 9.5);
 camera.lookAt(0, 0.2, 1);
 
+// Adjust camera Field of View to fit outer lanes horizontally in portrait mobile viewports
+function updateCameraFov() {
+  const aspect = window.innerWidth / window.innerHeight;
+  if (aspect < 1.0) {
+    camera.fov = 60 + (1.0 - aspect) * 52;
+  } else {
+    camera.fov = 60;
+  }
+  camera.updateProjectionMatrix();
+}
+
+updateCameraFov();
+
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -175,7 +188,7 @@ appContainer.appendChild(renderer.domElement);
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  updateCameraFov();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
