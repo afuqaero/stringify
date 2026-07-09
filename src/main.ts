@@ -130,6 +130,7 @@ let currentBuffer: AudioBuffer | null = null;
 let lastLoadedBuffer: AudioBuffer | null = null;
 let missAudioBuffer: AudioBuffer | null = null;
 let applauseAudioBuffer: AudioBuffer | null = null;
+let starPowerAudioBuffer: AudioBuffer | null = null;
 let isPlaying = false;
 let startTime = 0;
 let pausedOffset = 0;
@@ -2265,82 +2266,83 @@ function playPowerUpSound() {
   }
 }
 
-// Star Power activation sound effect (Lightning + Loaded Applause)
+// Star Power activation sound effect (OG Guitar Hero SFX + Simultaneous Applause)
 function playStarPowerSound() {
   try {
     const ctx = audioContext || new (window.AudioContext || (window as any).webkitAudioContext)();
     if (!ctx) return;
-    
-    // Duck main track volume (slightly reduced, not fully muted)
+
+    // Duck main track volume slightly
     if (mainTrackGainNode) {
       mainTrackGainNode.gain.cancelScheduledValues(ctx.currentTime);
       mainTrackGainNode.gain.linearRampToValueAtTime(0.65, ctx.currentTime + 0.5);
     }
-    
-    const now = ctx.currentTime;
-    
-    // --- Epic Lightning Crash ---
-    const bufferSize = ctx.sampleRate * 2.0; 
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
-    }
-    
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-    
-    const noiseFilter = ctx.createBiquadFilter();
-    noiseFilter.type = 'lowpass';
-    noiseFilter.frequency.setValueAtTime(1000, now);
-    noiseFilter.frequency.exponentialRampToValueAtTime(100, now + 1.5);
-    
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(2.0, now); // LOUDER
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
-    
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noise.start(now);
-    noise.stop(now + 2);
 
-    // --- Load and Play Real Crowd Applause ---
-    const playApplause = () => {
-      if (!applauseAudioBuffer) return;
-      const source = ctx.createBufferSource();
-      source.buffer = applauseAudioBuffer;
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = 1.8; // Make it loud
-      
-      // Fade it out towards the end of star power (10 seconds)
-      gainNode.gain.setValueAtTime(1.8, now + 8);
-      gainNode.gain.linearRampToValueAtTime(0, now + 10);
-      
-      source.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      source.start(now);
-      source.stop(now + 10);
+    const now = ctx.currentTime;
+
+    // Play both star power SFX and applause simultaneously
+    const playBoth = () => {
+      // --- OG Guitar Hero Star Power SFX ---
+      if (starPowerAudioBuffer) {
+        const spSource = ctx.createBufferSource();
+        spSource.buffer = starPowerAudioBuffer;
+        const spGain = ctx.createGain();
+        spGain.gain.value = 1.5;
+        spSource.connect(spGain);
+        spGain.connect(ctx.destination);
+        spSource.start(now);
+      }
+
+      // --- Crowd Applause (simultaneous, no delay) ---
+      if (applauseAudioBuffer) {
+        const apSource = ctx.createBufferSource();
+        apSource.buffer = applauseAudioBuffer;
+        const apGain = ctx.createGain();
+        apGain.gain.setValueAtTime(1.8, now);
+        apGain.gain.setValueAtTime(1.8, now + 8);
+        apGain.gain.linearRampToValueAtTime(0, now + 10);
+        apSource.connect(apGain);
+        apGain.connect(ctx.destination);
+        apSource.start(now);
+        apSource.stop(now + 10);
+      }
     };
 
-    if (!applauseAudioBuffer) {
-      fetch('applause.mp3')
-        .then(res => res.arrayBuffer())
-        .then(buf => ctx.decodeAudioData(buf))
-        .then(ab => {
-          applauseAudioBuffer = ab;
-          playApplause();
-        }).catch(e => console.error(e));
-    } else {
-      playApplause();
+    // Load any missing buffers then play
+    const loadPromises: Promise<void>[] = [];
+
+    if (!starPowerAudioBuffer) {
+      loadPromises.push(
+        fetch('star-power.mp3')
+          .then(res => res.arrayBuffer())
+          .then(buf => ctx.decodeAudioData(buf))
+          .then(ab => { starPowerAudioBuffer = ab; })
+          .catch(e => console.error('star-power load error:', e))
+      );
     }
-    
-    // Schedule restoring volume
+
+    if (!applauseAudioBuffer) {
+      loadPromises.push(
+        fetch('applause.mp3')
+          .then(res => res.arrayBuffer())
+          .then(buf => ctx.decodeAudioData(buf))
+          .then(ab => { applauseAudioBuffer = ab; })
+          .catch(e => console.error('applause load error:', e))
+      );
+    }
+
+    if (loadPromises.length > 0) {
+      Promise.all(loadPromises).then(() => playBoth());
+    } else {
+      playBoth();
+    }
+
+    // Restore main track volume after star power ends
     if (mainTrackGainNode) {
       mainTrackGainNode.gain.setValueAtTime(0.65, now + 10);
       mainTrackGainNode.gain.linearRampToValueAtTime(1.0, now + 11);
     }
-    
+
   } catch (e) {}
 }
 
