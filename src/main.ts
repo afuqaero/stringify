@@ -794,6 +794,20 @@ btnRecordBack.addEventListener('click', () => {
 // HUD Controls Events
 document.getElementById('btn-start-game')?.addEventListener('click', () => switchState(GameState.HUB));
 
+// Also handle touchstart anywhere on title screen for mobile
+screenTitle.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (currentState === GameState.TITLE) switchState(GameState.HUB);
+}, { passive: false });
+
+// Backup: explicit space key listener
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && currentState === GameState.TITLE) {
+    e.preventDefault();
+    switchState(GameState.HUB);
+  }
+});
+
 // Calibration Button clicks mapping
 btnCalibPlay.addEventListener('click', () => {
   calibDifficultySource = 'play';
