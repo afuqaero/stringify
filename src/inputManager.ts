@@ -10,8 +10,9 @@ export class InputManager {
   keysDown: Set<string> = new Set();
   gamepadButtonsDown: Set<number> = new Set();
   
-  // Touch tracking
+  // Touch & Gamepad tracking
   numLanes: number = 4;
+  gamepadId: string = '';
   touchesActive: Map<number, number> = new Map(); // touchID -> lane
   lanesTouched: Set<number> = new Set();
   prevLanesTouched: Set<number> = new Set();
@@ -79,15 +80,21 @@ export class InputManager {
     
     this.gamepadButtonsDown.clear();
     const gamepads = navigator.getGamepads();
+    let gpConnected = false;
     for (let i = 0; i < gamepads.length; i++) {
       const gp = gamepads[i];
       if (gp) {
+        this.gamepadId = gp.id;
+        gpConnected = true;
         gp.buttons.forEach((btn, index) => {
           if (btn.pressed) {
             this.gamepadButtonsDown.add(index);
           }
         });
       }
+    }
+    if (!gpConnected) {
+      this.gamepadId = '';
     }
   }
 

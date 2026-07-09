@@ -964,9 +964,51 @@ btnHamExport.addEventListener('click', handleExportChart);
 
 let activeCalibLane = -1;
 
+function getGamepadButtonLabel(btnIndex: number, gamepadId?: string): string {
+  const isPlayStation = gamepadId && (
+    gamepadId.toLowerCase().includes('sony') || 
+    gamepadId.toLowerCase().includes('playstation') || 
+    gamepadId.toLowerCase().includes('dual')
+  );
+
+  const mappings: Record<number, { xbox: string, ps: string }> = {
+    0: { xbox: 'A', ps: '✕ (Cross)' },
+    1: { xbox: 'B', ps: '◯ (Circle)' },
+    2: { xbox: 'X', ps: '☐ (Square)' },
+    3: { xbox: 'Y', ps: '△ (Triangle)' },
+    4: { xbox: 'LB', ps: 'L1' },
+    5: { xbox: 'RB', ps: 'R1' },
+    6: { xbox: 'LT', ps: 'L2' },
+    7: { xbox: 'RT', ps: 'R2' },
+    8: { xbox: 'View', ps: 'Share' },
+    9: { xbox: 'Menu', ps: 'Options' },
+    10: { xbox: 'LS Click', ps: 'L3' },
+    11: { xbox: 'RS Click', ps: 'R3' },
+    12: { xbox: 'D-Pad Up', ps: 'D-Pad Up' },
+    13: { xbox: 'D-Pad Down', ps: 'D-Pad Down' },
+    14: { xbox: 'D-Pad Left', ps: 'D-Pad Left' },
+    15: { xbox: 'D-Pad Right', ps: 'D-Pad Right' },
+  };
+
+  const map = mappings[btnIndex];
+  if (!map) return `Button ${btnIndex}`;
+  return isPlayStation ? map.ps : map.xbox;
+}
+
 function populateCalibrationUI() {
   const container = document.getElementById('calib-lanes')!;
+  const statusEl = document.getElementById('gamepad-status')!;
   container.innerHTML = '';
+  
+  // Gamepad status detection
+  if (input.gamepadId) {
+    const isPlayStation = input.gamepadId.toLowerCase().includes('sony') || 
+                        input.gamepadId.toLowerCase().includes('playstation') || 
+                        input.gamepadId.toLowerCase().includes('dual');
+    statusEl.innerHTML = `<i class="fa-solid fa-gamepad"></i> Connected: ${isPlayStation ? 'PlayStation Controller' : 'Xbox Controller'}`;
+  } else {
+    statusEl.innerHTML = `<i class="fa-solid fa-gamepad" style="opacity: 0.5;"></i> No Gamepad Connected (Press any button to connect)`;
+  }
   
   const difficulty = calibDifficultySource === 'play' ? difficultySelectPlayValue : difficultySelectRecordValue;
   let numLanes = 4;
@@ -983,7 +1025,8 @@ function populateCalibrationUI() {
     div.dataset.lane = i.toString();
     const bind = input.bindings[i];
     if (bind) {
-      div.innerHTML = `Lane ${i+1} (${laneNames[i % laneNames.length]}) <span class="bind">Key ${bind.kb.toUpperCase()} / GP ${bind.gp}</span>`;
+      const gpLabel = getGamepadButtonLabel(bind.gp, input.gamepadId);
+      div.innerHTML = `Lane ${i+1} (${laneNames[i % laneNames.length]}) <span class="bind">Key ${bind.kb.toUpperCase()} / GP ${gpLabel}</span>`;
     }
     
     div.addEventListener('click', () => {
