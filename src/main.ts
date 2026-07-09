@@ -98,7 +98,7 @@ if (bgMusic) {
   // Pick a random track for this session and hold it fixed
   const sessionTrack = BG_TRACKS[Math.floor(Math.random() * BG_TRACKS.length)];
   bgMusic.src = sessionTrack;
-  bgMusic.volume = 0.08; // Low volume — minimal background ambiance
+  bgMusic.volume = 0.4; // 40% volume
 }
 
 function triggerBgMusic(play: boolean) {
