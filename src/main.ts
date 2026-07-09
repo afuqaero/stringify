@@ -565,7 +565,8 @@ chartUpload.addEventListener('change', async (e) => {
 
 // Update UI state
 function switchState(newState: GameState) {
-  triggerBgMusic(newState !== GameState.PLAY);
+  const shouldPlayBgMusic = (newState === GameState.TITLE || newState === GameState.HUB || newState === GameState.CALIBRATE);
+  triggerBgMusic(shouldPlayBgMusic);
   currentState = newState;
   screenTitle.classList.add('hidden');
   screenHub.classList.add('hidden');
