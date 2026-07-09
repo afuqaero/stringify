@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { input } from './inputManager';
 import { inject } from '@vercel/analytics';
 import { saveSong, getSongList, getSongData, deleteSong } from './libraryManager';
-import { analyzeAudio } from './audioAnalyzer';
 
 // Initialize Vercel Analytics
 inject();
