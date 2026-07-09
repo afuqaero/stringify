@@ -90,13 +90,15 @@ let currentState = GameState.TITLE;
 const BG_TRACKS = [
   '/Blacktop Fever.mp3',
   '/Mirrorball Rebel.mp3',
+  '/Burned CD Heart.mp3',
+  '/Neon Kiss.mp3',
 ];
 const bgMusic = document.getElementById('bg-music') as HTMLAudioElement;
 if (bgMusic) {
   // Pick a random track for this session and hold it fixed
   const sessionTrack = BG_TRACKS[Math.floor(Math.random() * BG_TRACKS.length)];
   bgMusic.src = sessionTrack;
-  bgMusic.volume = 0.2; // 20% volume
+  bgMusic.volume = 0.08; // Low volume — minimal background ambiance
 }
 
 function triggerBgMusic(play: boolean) {
