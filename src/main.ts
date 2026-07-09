@@ -1613,3 +1613,14 @@ animate();
 
 // Initialize UI hover audio triggers
 addHoverSounds();
+
+// Unlock and play background music on the first user interaction gesture
+const unlockAudio = () => {
+  if (currentState !== GameState.PLAY) {
+    triggerBgMusic(true);
+  }
+  window.removeEventListener('click', unlockAudio);
+  window.removeEventListener('keydown', unlockAudio);
+};
+window.addEventListener('click', unlockAudio);
+window.addEventListener('keydown', unlockAudio);
