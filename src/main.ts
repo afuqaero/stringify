@@ -1414,19 +1414,12 @@ function animate() {
   const dt = (now - lastTime) / 1000;
   lastTime = now;
 
-  // Scroll highway bars
+  // Scroll highway bars (both modes flow Up-to-Down)
   if (isPlaying && currentState === GameState.PLAY) {
     highwayBars.forEach(bar => {
-      if (isRecordingMode) {
-        bar.position.z -= dt * currentNoteSpeed;
-        if (bar.position.z < SPAWN_Z) {
-          bar.position.z = RECEPTOR_Z;
-        }
-      } else {
-        bar.position.z += dt * currentNoteSpeed;
-        if (bar.position.z > RECEPTOR_Z + 5) {
-          bar.position.z = SPAWN_Z;
-        }
+      bar.position.z += dt * currentNoteSpeed;
+      if (bar.position.z > RECEPTOR_Z + 5) {
+        bar.position.z = SPAWN_Z;
       }
     });
   }
@@ -1515,8 +1508,8 @@ function animate() {
           
           if (group) {
             const tailLength = duration * currentNoteSpeed;
-            // Move note head up the highway smoothly in real-time
-            group.position.z = RECEPTOR_Z - tailLength;
+            // Move note head down the highway (Up-to-Down direction)
+            group.position.z = RECEPTOR_Z + tailLength;
             
             // Only draw tail/cap if duration exceeds sustain note threshold (0.15s)
             if (duration > 0.15) {
@@ -1534,7 +1527,7 @@ function animate() {
                 opacity: 0.6
               });
               const tailMesh = new THREE.Mesh(tailGeo, tailMat);
-              tailMesh.position.set(0, 0.04, tailLength / 2);
+              tailMesh.position.set(0, 0.04, -tailLength / 2);
               group.add(tailMesh);
               
               const capGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.06, 16);
@@ -1546,7 +1539,7 @@ function animate() {
                 opacity: 0.8
               });
               const capMesh = new THREE.Mesh(capGeo, capMat);
-              capMesh.position.set(0, 0.04, tailLength);
+              capMesh.position.set(0, 0.04, -tailLength);
               group.add(capMesh);
             }
           }
@@ -1664,12 +1657,12 @@ function animate() {
 
     activeNotes.forEach(note => {
       if (isRecordingMode) {
-        // RECORD MODE NOTE MOVEMENT (Down to Up)
+        // RECORD MODE NOTE MOVEMENT (Up to Down)
         const elapsed = currentTime - note.time;
-        const noteZ = RECEPTOR_Z - (elapsed * currentNoteSpeed);
+        const noteZ = RECEPTOR_Z + (elapsed * currentNoteSpeed);
         note.group.position.z = noteZ;
         
-        if (noteZ < SPAWN_Z) {
+        if (noteZ > RECEPTOR_Z + 20) {
           scene.remove(note.group);
         }
         return;
