@@ -1486,32 +1486,6 @@ function animate() {
           const head = createNoteGeometry(COLORS[i % COLORS.length]);
           group.add(head);
           
-          // Placeholder tail mesh that we scale/replace as user holds key
-          const tailGeo = new THREE.BoxGeometry(0.3, 0.04, 0.01);
-          const tailMat = new THREE.MeshStandardMaterial({
-            color: COLORS[i % COLORS.length],
-            emissive: COLORS[i % COLORS.length],
-            emissiveIntensity: 0.6,
-            transparent: true,
-            opacity: 0.6
-          });
-          const tailMesh = new THREE.Mesh(tailGeo, tailMat);
-          tailMesh.position.set(0, 0.04, 0);
-          group.add(tailMesh);
-          
-          // Placeholder end cap
-          const capGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.06, 16);
-          const capMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: COLORS[i % COLORS.length],
-            emissiveIntensity: 0.4,
-            transparent: true,
-            opacity: 0.8
-          });
-          const capMesh = new THREE.Mesh(capGeo, capMat);
-          capMesh.position.set(0, 0.04, 0);
-          group.add(capMesh);
-          
           group.position.set(startX + i * LANE_WIDTH, 0.05, RECEPTOR_Z);
           scene.add(group);
           recordingVisualSustains[i] = group;
@@ -1531,36 +1505,42 @@ function animate() {
           const duration = currentTime - pressStart;
           const group = recordingVisualSustains[i];
           
-          if (group && duration > 0.02) {
+          if (group) {
             const tailLength = duration * currentNoteSpeed;
+            // Move note head up the highway smoothly in real-time
+            group.position.z = RECEPTOR_Z - tailLength;
             
-            // Remove old tail and end cap dynamically to replace them
-            if (group.children[1]) group.remove(group.children[1]);
-            if (group.children[1]) group.remove(group.children[1]); 
-            
-            const tailGeo = new THREE.BoxGeometry(0.3, 0.04, tailLength);
-            const tailMat = new THREE.MeshStandardMaterial({
-              color: COLORS[i % COLORS.length],
-              emissive: COLORS[i % COLORS.length],
-              emissiveIntensity: 0.6,
-              transparent: true,
-              opacity: 0.6
-            });
-            const tailMesh = new THREE.Mesh(tailGeo, tailMat);
-            tailMesh.position.set(0, 0.04, -tailLength / 2);
-            group.add(tailMesh);
-            
-            const capGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.06, 16);
-            const capMat = new THREE.MeshStandardMaterial({
-              color: 0xffffff,
-              emissive: COLORS[i % COLORS.length],
-              emissiveIntensity: 0.4,
-              transparent: true,
-              opacity: 0.8
-            });
-            const capMesh = new THREE.Mesh(capGeo, capMat);
-            capMesh.position.set(0, 0.04, -tailLength);
-            group.add(capMesh);
+            // Only draw tail/cap if duration exceeds sustain note threshold (0.15s)
+            if (duration > 0.15) {
+              // Clear previous visual tails/caps
+              while (group.children.length > 1) {
+                group.remove(group.children[1]);
+              }
+              
+              const tailGeo = new THREE.BoxGeometry(0.3, 0.04, tailLength);
+              const tailMat = new THREE.MeshStandardMaterial({
+                color: COLORS[i % COLORS.length],
+                emissive: COLORS[i % COLORS.length],
+                emissiveIntensity: 0.6,
+                transparent: true,
+                opacity: 0.6
+              });
+              const tailMesh = new THREE.Mesh(tailGeo, tailMat);
+              tailMesh.position.set(0, 0.04, tailLength / 2);
+              group.add(tailMesh);
+              
+              const capGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.06, 16);
+              const capMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                emissive: COLORS[i % COLORS.length],
+                emissiveIntensity: 0.4,
+                transparent: true,
+                opacity: 0.8
+              });
+              const capMesh = new THREE.Mesh(capGeo, capMat);
+              capMesh.position.set(0, 0.04, tailLength);
+              group.add(capMesh);
+            }
           }
         }
         
