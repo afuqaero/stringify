@@ -67,9 +67,6 @@ const btnExportChart = document.getElementById('btn-export-chart')!;
 // Complete screen elements
 const screenComplete = document.getElementById('screen-complete')!;
 const completeStars = document.getElementById('complete-stars')!;
-const completeScore = document.getElementById('complete-score')!;
-const completeAccuracy = document.getElementById('complete-accuracy')!;
-const completeMissed = document.getElementById('complete-missed')!;
 const btnCompleteAgain = document.getElementById('btn-complete-again')!;
 const btnCompleteQuit = document.getElementById('btn-complete-quit')!;
 
@@ -891,25 +888,81 @@ function showCompleteScreen() {
     audioSource = null;
   }
   isPlaying = false;
-  
-  // Calculate missed notes
-  const missed = Math.max(0, totalNotesProcessed - totalHits);
-  const acc = totalNotesProcessed === 0 ? 100 : Math.round((totalHits / totalNotesProcessed) * 100);
-  
-  // Calculate Stars
-  let stars = 1;
-  if (acc >= 98) stars = 5;
-  else if (acc >= 90) stars = 4;
-  else if (acc >= 75) stars = 3;
-  else if (acc >= 60) stars = 2;
-  
-  // Populate UI
-  completeScore.innerText = Math.round(score).toString();
-  completeAccuracy.innerText = acc + '%';
-  completeMissed.innerText = missed.toString();
+
+  const titleSub = screenComplete.querySelector('.menu-subtitle') as HTMLElement;
+  const titleH2 = screenComplete.querySelector('h2') as HTMLElement;
+  const statsSummary = screenComplete.querySelector('.card > div:nth-of-type(2)') as HTMLElement;
+  const exportBtn = document.getElementById('btn-complete-export')!;
+  const againBtn = document.getElementById('btn-complete-again')!;
   
   // Clear stars container
   completeStars.innerHTML = '';
+
+  if (isRecordingMode) {
+    // Custom Record Complete Layout
+    if (titleSub) titleSub.innerText = "RECORD COMPLETE";
+    if (titleH2) titleH2.innerText = "Recording Finished";
+    completeStars.style.display = 'none';
+    
+    if (statsSummary) {
+      statsSummary.innerHTML = `
+        <div style="display: flex; justify-content: space-between; font-size: 1.15rem; padding: 5px 0;">
+          <span style="color: var(--text-muted);">Total Recorded Notes:</span>
+          <span style="font-weight: 900; color: var(--accent);">${recordedNotes.length}</span>
+        </div>
+      `;
+    }
+    
+    exportBtn.style.display = 'block';
+    againBtn.innerText = "Record Again";
+  } else {
+    // Standard Play Complete Layout
+    if (titleSub) titleSub.innerText = "CONGRATULATIONS";
+    if (titleH2) titleH2.innerText = "Song Complete";
+    completeStars.style.display = 'block';
+    
+    const missed = Math.max(0, totalNotesProcessed - totalHits);
+    const acc = totalNotesProcessed === 0 ? 100 : Math.round((totalHits / totalNotesProcessed) * 100);
+    
+    if (statsSummary) {
+      statsSummary.innerHTML = `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 1.15rem;">
+          <span style="color: var(--text-muted);">Final Score:</span>
+          <span id="complete-score" style="font-weight: 900; color: #ffffff;">${Math.round(score)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 1.15rem;">
+          <span style="color: var(--text-muted);">Accuracy:</span>
+          <span id="complete-accuracy" style="font-weight: 900; color: #ffffff;">${acc}%</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 1.15rem;">
+          <span style="color: var(--text-muted);">Notes Missed:</span>
+          <span id="complete-missed" style="font-weight: 900; color: var(--primary);">${missed}</span>
+        </div>
+      `;
+    }
+    
+    exportBtn.style.display = 'none';
+    againBtn.innerText = "Play Again";
+
+    // Play Mode star calculations & popping
+    let stars = 1;
+    if (acc >= 98) stars = 5;
+    else if (acc >= 90) stars = 4;
+    else if (acc >= 75) stars = 3;
+    else if (acc >= 60) stars = 2;
+
+    for (let s = 0; s < stars; s++) {
+      setTimeout(() => {
+        if (currentState !== GameState.COMPLETE) return;
+        const span = document.createElement('span');
+        span.className = 'star-pop';
+        span.innerText = '⭐';
+        playStarPopSound(s);
+        completeStars.appendChild(span);
+      }, s * 220);
+    }
+  }
+
   switchState(GameState.COMPLETE);
   
   // Apply card pop animation
@@ -918,18 +971,6 @@ function showCompleteScreen() {
     completeCard.classList.remove('card-popup');
     void (completeCard as HTMLElement).offsetWidth; // trigger reflow
     completeCard.classList.add('card-popup');
-  }
-
-  // Pop stars one by one with sound
-  for (let s = 0; s < stars; s++) {
-    setTimeout(() => {
-      if (currentState !== GameState.COMPLETE) return;
-      const span = document.createElement('span');
-      span.className = 'star-pop';
-      span.innerText = '⭐';
-      playStarPopSound(s);
-      completeStars.appendChild(span);
-    }, s * 220);
   }
 }
 
@@ -987,6 +1028,8 @@ btnCompleteQuit.addEventListener('click', () => {
   stopAudio();
   switchState(GameState.HUB);
 });
+
+document.getElementById('btn-complete-export')?.addEventListener('click', handleExportChart);
 
 function handleExportChart() {
   if (recordedNotes.length === 0) {
@@ -1137,13 +1180,13 @@ function updateComboUI() {
     const colorStr = '#' + colorHex.toString(16).padStart(6, '0');
     floatingCombo.style.color = colorStr;
     
-    // Subtle pop scale bump animation
-    floatingCombo.style.transform = 'translateY(-50%) scale(1.15)';
-    setTimeout(() => {
-      floatingCombo.style.transform = 'translateY(-50%) scale(1)';
-    }, 70);
+    // Trigger CSS pop animation by toggling class
+    floatingCombo.classList.remove('combo-pop');
+    void floatingCombo.offsetWidth; // trigger reflow
+    floatingCombo.classList.add('combo-pop');
   } else {
     floatingCombo.style.opacity = '0';
+    floatingCombo.classList.remove('combo-pop');
   }
 }
 
