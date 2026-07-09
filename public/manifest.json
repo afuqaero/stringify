@@ -1,0 +1,18 @@
+{
+  "name": "Stringify Rhythm Game",
+  "short_name": "Stringify",
+  "description": "A premium web-based 3D rhythm game inspired by Guitar Hero.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0c16",
+  "theme_color": "#f43f5e",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

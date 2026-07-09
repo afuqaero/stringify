@@ -208,6 +208,7 @@ function drawReceptorCanvas(ctx: CanvasRenderingContext2D, colorHex: number, let
 
 function generateScene(numLanes: number) {
   currentNumLanes = numLanes;
+  input.numLanes = numLanes;
   
   // Set floating combo position dynamically — clearly outside the highway border
   // Easy (3): 290px, Medium (4): 360px, Hard (5): 430px
@@ -485,18 +486,67 @@ function spawnParticles(position: THREE.Vector3, color: number) {
   }
 }
 
+// Sanitize custom chart upload to prevent Prototype Pollution and JSON injection attacks
+function sanitizeChart(rawData: any): { time: number, lane: number, duration?: number }[] {
+  // If data is wrapped in a root object like { notes: [...] }
+  let data = rawData;
+  if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+    if (Array.isArray(rawData.notes)) {
+      data = rawData.notes;
+    }
+  }
+
+  if (!Array.isArray(data)) {
+    throw new Error("Invalid chart format: Chart must be a JSON array of notes.");
+  }
+
+  const sanitized: { time: number, lane: number, duration?: number }[] = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const item = data[i];
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      // Create a completely clean object with no prototype inheritance
+      const cleanNote: any = Object.create(null);
+
+      // Enforce strong typing and parse values strictly
+      const t = Number(item.time);
+      const l = parseInt(item.lane, 10);
+
+      // Time must be a valid positive number
+      if (isNaN(t) || t < 0) continue;
+      cleanNote.time = t;
+
+      // Lane must be a valid lane index between 0 and 4
+      if (isNaN(l) || l < 0 || l > 4) continue;
+      cleanNote.lane = l;
+
+      // Handle optional duration (must be a valid positive number)
+      if (item.duration !== undefined) {
+        const d = Number(item.duration);
+        if (!isNaN(d) && d > 0) {
+          cleanNote.duration = d;
+        }
+      }
+
+      sanitized.push(cleanNote);
+    }
+  }
+
+  // Sort notes strictly by timestamp to avoid gameplay synchronization skips
+  return sanitized.sort((a, b) => a.time - b.time);
+}
+
 // Handle Custom Chart Upload (Play Mode)
 chartUpload.addEventListener('change', async (e) => {
   const file = (e.target as HTMLInputElement).files?.[0];
   if (!file) return;
   try {
     const text = await file.text();
+    // Parse JSON
     const data = JSON.parse(text);
-    if (Array.isArray(data)) {
-      loadedCustomChart = data;
-    } else if (data.notes && Array.isArray(data.notes)) {
-      loadedCustomChart = data.notes;
-    }
+    // Sanitize and validate incoming values
+    loadedCustomChart = sanitizeChart(data);
+    
     alert("Custom Chart Loaded Successfully! Step 2 is now unlocked.");
     
     // Unlock play mode audio button
@@ -504,9 +554,9 @@ chartUpload.addEventListener('change', async (e) => {
     audioUploadPlayLabel.style.pointerEvents = 'auto';
     audioUploadPlayLabel.classList.add('btn-accent');
     document.getElementById('chart-upload-label')?.classList.remove('btn-accent');
-  } catch (err) {
-    console.error("Failed to parse chart:", err);
-    alert("Failed to load chart JSON. Ensure it is a valid format.");
+  } catch (err: any) {
+    console.error("Failed to parse/sanitize chart:", err);
+    alert(err?.message || "Failed to load chart JSON. Ensure it is a valid format.");
     loadedCustomChart = null;
   } finally {
     chartUpload.value = '';
