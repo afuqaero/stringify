@@ -1562,7 +1562,7 @@ function playBubbleSound() {
     osc.frequency.setValueAtTime(320, now);
     osc.frequency.exponentialRampToValueAtTime(750, now + 0.08);
     
-    gainNode.gain.setValueAtTime(0.035, now);
+    gainNode.gain.setValueAtTime(0.18, now);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
     
     osc.connect(gainNode);
