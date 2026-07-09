@@ -549,6 +549,68 @@
           transform: scale(1) rotate(0deg);
         }
       }
+      
+      /* MOBILE RESPONSIVE MEDIA QUERIES */
+      @media (max-width: 768px) {
+        .choice-container {
+          flex-direction: column;
+          gap: 15px;
+        }
+        .choice-card {
+          padding: 20px;
+        }
+        .choice-card h3 {
+          font-size: 1.4rem;
+        }
+        .choice-icon {
+          font-size: 2.5rem;
+          margin-bottom: 8px;
+        }
+        .card {
+          padding: 1.5rem;
+        }
+        h2 {
+          font-size: 1.6rem;
+        }
+        p {
+          font-size: 0.95rem;
+        }
+        .floating-combo {
+          left: 50% !important;
+          transform: translate(-50%, -50%) scale(1) !important;
+          top: 35% !important;
+          text-align: center;
+          font-size: 2.4rem;
+        }
+        .combo-label {
+          text-align: center;
+          font-size: 0.75rem;
+        }
+        .hud-bar {
+          gap: 12px;
+          padding: 4px 12px;
+        }
+        #hud-song-val {
+          max-width: 100px;
+        }
+        #top-hud {
+          top: 10px;
+        }
+        #stats-hud {
+          top: 10px;
+          right: 10px;
+          gap: 10px;
+          padding: 4px 10px;
+        }
+        #hamburger-btn {
+          top: 10px;
+          left: 10px;
+        }
+        #hamburger-menu {
+          top: 60px;
+          left: 10px;
+        }
+      }
     </style>
   </head>
   <body>
