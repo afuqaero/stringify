@@ -664,7 +664,7 @@ function sanitizeChart(rawData: any): { time: number, lane: number, duration?: n
 
 // Update UI state
 function switchState(newState: GameState) {
-  const shouldPlayBgMusic = (newState === GameState.TITLE || newState === GameState.HUB || newState === GameState.CALIBRATE);
+  const shouldPlayBgMusic = (newState === GameState.TITLE);
   triggerBgMusic(shouldPlayBgMusic);
   currentState = newState;
   screenTitle.classList.add('hidden');
@@ -690,7 +690,9 @@ function switchState(newState: GameState) {
     hubRecordConfig.classList.add('hidden');
     hubLoading.classList.add('hidden');
     screenHub.style.display = 'flex';
-    triggerBgMusic(true);
+    
+    // NO triggerBgMusic(true) here!
+    
     renderLibrary();
     loadedCustomChart = null;
   }
