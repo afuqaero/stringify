@@ -63,9 +63,10 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        background: rgba(11, 12, 22, 0.4);
+        background: rgba(11, 12, 22, 0.65);
         backdrop-filter: blur(8px);
         transition: opacity 0.5s ease;
+        pointer-events: auto;
       }
       .hidden {
         display: none !important;
@@ -583,6 +584,9 @@
         }
         .card {
           padding: 1.5rem;
+        }
+        h1.stringify-title {
+          font-size: 3.5rem;
         }
         h2 {
           font-size: 1.6rem;
