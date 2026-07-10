@@ -94,8 +94,11 @@ let currentState = GameState.TITLE;
 // Background Music
 const BG_TRACKS = [
   '/Blacktop Fever.mp3',
-  '/Mirrorball Rebel.mp3',
+  '/Bleach Stained Hoodie.mp3',
+  '/Break the Chain.mp3',
   '/Burned CD Heart.mp3',
+  '/Glass In My Pocket.mp3',
+  '/Mirrorball Rebel.mp3',
   '/Neon Kiss.mp3',
 ];
 const bgMusic = document.getElementById('bg-music') as HTMLAudioElement;
