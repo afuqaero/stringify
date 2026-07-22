@@ -1763,9 +1763,13 @@ async function handleSongStart(songName: string, arrayBuffer: ArrayBuffer, selec
     if (isRecordingMode) {
       activeNotes = [];
     } else {
+      // 150ms offset to compensate for human reaction time and audio output latency during recording
+      const PLAYBACK_LATENCY_OFFSET = 0.15; 
+      
       activeNotes = chartNotes.map(n => {
         const safeLane = Math.max(0, Math.min(numLanes - 1, typeof n.lane === 'number' ? n.lane : 0));
-        const safeTime = typeof n.time === 'number' ? n.time : 0;
+        const originalTime = typeof n.time === 'number' ? n.time : 0;
+        const safeTime = Math.max(0, originalTime - PLAYBACK_LATENCY_OFFSET);
         const group = createSustainNoteGeometry(COLORS[safeLane % COLORS.length], n.duration || 0);
         group.position.set(startX + safeLane * LANE_WIDTH, 0.05, SPAWN_Z);
         return { 
