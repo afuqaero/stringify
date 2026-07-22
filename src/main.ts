@@ -58,9 +58,10 @@ const floatingStarPower = document.getElementById('floating-star-power')!;
 
 let spGaugeGroup: THREE.Group | null = null;
 let spLiquidFillMesh: THREE.Mesh | null = null;
-let spLiquidCapMesh: THREE.Mesh | null = null;
+let spLiquidCapGroup: THREE.Group | null = null;
 let spLiquidMaterial: THREE.MeshStandardMaterial | null = null;
 let spParticleSystem: THREE.Points | null = null;
+let spSplashParticleSystem: THREE.Points | null = null;
 
 // Hamburger menu
 const hamburgerBtn = document.getElementById('hamburger-btn') as HTMLButtonElement;
@@ -377,9 +378,10 @@ function generateScene(numLanes: number) {
     });
     spGaugeGroup = null;
     spLiquidFillMesh = null;
-    spLiquidCapMesh = null;
+    spLiquidCapGroup = null;
     spLiquidMaterial = null;
     spParticleSystem = null;
+    spSplashParticleSystem = null;
   }
   separators = [];
   receptors = [];
@@ -570,7 +572,7 @@ function generateScene(numLanes: number) {
     emissive: 0xff7700, 
     emissiveIntensity: 1.8, 
     transparent: true, 
-    opacity: 0.95,
+    opacity: 0.65, // More transparent to see fluid
     blending: THREE.AdditiveBlending
   });
   spLiquidFillMesh = new THREE.Mesh(liquidGeo, spLiquidMaterial);
@@ -579,33 +581,40 @@ function generateScene(numLanes: number) {
   spLiquidFillMesh.position.set(leftEdgeX, 0.1, bottomZ);
   spGaugeGroup.add(spLiquidFillMesh);
 
-  // Liquid Glowing Surface Cap Disc (Meniscus)
-  const capDiscGeo = new THREE.CylinderGeometry(liquidRadius, liquidRadius, 0.04, 16);
-  const capDiscMat = new THREE.MeshStandardMaterial({ 
-    color: 0xffea88, 
-    emissive: 0xffaa00, 
-    emissiveIntensity: 2.0,
+  // Liquid Glowing Surface Cap Group (Frothy Boiling Surface)
+  spLiquidCapGroup = new THREE.Group();
+  const capSphereGeo = new THREE.SphereGeometry(liquidRadius * 0.8, 16, 16);
+  const capSphereMat = new THREE.MeshStandardMaterial({ 
+    color: 0xffffff, 
+    emissive: 0xff9900, 
+    emissiveIntensity: 2.5,
+    transparent: true,
+    opacity: 0.9,
     blending: THREE.AdditiveBlending 
   });
-  spLiquidCapMesh = new THREE.Mesh(capDiscGeo, capDiscMat);
-  spLiquidCapMesh.rotation.x = Math.PI / 2;
-  spLiquidCapMesh.position.set(leftEdgeX, 0.1, bottomZ);
-  spLiquidCapMesh.visible = true;
-  spGaugeGroup.add(spLiquidCapMesh);
+  
+  // Create 3 overlapping spheres for a bubbly/swoshing surface
+  for(let i = 0; i < 3; i++) {
+    const s = new THREE.Mesh(capSphereGeo, capSphereMat);
+    s.position.set((Math.random() - 0.5) * 0.08, 0, (Math.random() - 0.5) * 0.08);
+    spLiquidCapGroup.add(s);
+  }
+  spLiquidCapGroup.position.set(leftEdgeX, 0.1, bottomZ);
+  spGaugeGroup.add(spLiquidCapGroup);
 
-  // Sparkling Swirling Fluid Particles
-  const particleCount = 40;
+  // Sparkling Swirling Fluid Particles (Inside Liquid)
+  const particleCount = 80;
   const pPositions = new Float32Array(particleCount * 3);
   for (let i = 0; i < particleCount; i++) {
-    pPositions[i * 3] = (Math.random() - 0.5) * 0.12; // dx
-    pPositions[i * 3 + 1] = (Math.random() - 0.5) * 0.12; // dy
-    pPositions[i * 3 + 2] = -Math.random() * tubeLength; // dz
+    pPositions[i * 3] = (Math.random() - 0.5) * 0.12;
+    pPositions[i * 3 + 1] = (Math.random() - 0.5) * 0.12;
+    pPositions[i * 3 + 2] = -Math.random() * tubeLength;
   }
   const pGeo = new THREE.BufferGeometry();
   pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
   const pMat = new THREE.PointsMaterial({
     color: 0xffd066,
-    size: 0.1,
+    size: 0.12,
     transparent: true,
     opacity: 0.9,
     blending: THREE.AdditiveBlending
@@ -613,6 +622,34 @@ function generateScene(numLanes: number) {
   spParticleSystem = new THREE.Points(pGeo, pMat);
   spParticleSystem.position.set(leftEdgeX, 0.1, bottomZ);
   spGaugeGroup.add(spParticleSystem);
+
+  // Splashing Particles (Surface Drops)
+  const splashCount = 30;
+  const splashPos = new Float32Array(splashCount * 3);
+  const splashVel = new Float32Array(splashCount * 3);
+  for(let i=0; i<splashCount; i++) {
+    splashPos[i*3] = (Math.random() - 0.5) * 0.15;
+    splashPos[i*3+1] = (Math.random() - 0.5) * 0.15;
+    splashPos[i*3+2] = 0; // Starts at surface level Z
+    
+    // Velocities for jumping up (negative Z is up)
+    splashVel[i*3] = (Math.random() - 0.5) * 0.1;
+    splashVel[i*3+1] = (Math.random() - 0.5) * 0.1;
+    splashVel[i*3+2] = -Math.random() * 0.2 - 0.1;
+  }
+  const splashGeo = new THREE.BufferGeometry();
+  splashGeo.setAttribute('position', new THREE.BufferAttribute(splashPos, 3));
+  splashGeo.setAttribute('velocity', new THREE.BufferAttribute(splashVel, 3));
+  const splashMat = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 0.08,
+    transparent: true,
+    opacity: 1.0,
+    blending: THREE.AdditiveBlending
+  });
+  spSplashParticleSystem = new THREE.Points(splashGeo, splashMat);
+  spSplashParticleSystem.position.set(leftEdgeX, 0.1, bottomZ);
+  spGaugeGroup.add(spSplashParticleSystem);
 
   scene.add(spGaugeGroup);
 }
@@ -1500,7 +1537,7 @@ function updateComboUI() {
 }
 
 function updateStarPowerMeterUI() {
-  if (!spGaugeGroup || !spLiquidFillMesh || !spLiquidCapMesh || !spLiquidMaterial) return;
+  if (!spGaugeGroup || !spLiquidFillMesh || !spLiquidCapGroup || !spLiquidMaterial) return;
 
   if (currentState !== GameState.PLAY && currentState !== GameState.INTRO) {
     spGaugeGroup.visible = false;
@@ -1533,8 +1570,16 @@ function updateStarPowerMeterUI() {
   spLiquidFillMesh.scale.set(1, fluidFraction, 1);
   spLiquidFillMesh.position.z = bottomZ - currentHeight / 2;
 
-  // Glowing liquid head cap positioning
-  spLiquidCapMesh.position.z = bottomZ - currentHeight + Math.sin(time * 0.01) * 0.015;
+  // Glowing liquid head cap positioning and bubbling animation
+  spLiquidCapGroup.position.z = bottomZ - currentHeight;
+  spLiquidCapGroup.children.forEach((child, i) => {
+    // Make spheres wobble and scale to look like a boiling/splashing liquid surface
+    const wobbleT = time * 0.005 + i * 2.0;
+    child.position.y = Math.sin(wobbleT) * 0.02;
+    child.position.z = Math.cos(wobbleT * 1.3) * 0.02;
+    const sScale = 0.8 + Math.sin(wobbleT * 2.0) * 0.2;
+    child.scale.setScalar(sScale);
+  });
 
   // Animate Swirling Orange Particles inside filled liquid height
   if (spParticleSystem) {
@@ -1554,6 +1599,46 @@ function updateStarPowerMeterUI() {
       array[i * 3 + 2] = pZ;
     }
     attr.needsUpdate = true;
+  }
+
+  // Animate Splashing Physics Particles at the surface
+  if (spSplashParticleSystem && pct > 0) {
+    const posAttr = spSplashParticleSystem.geometry.attributes.position as THREE.BufferAttribute;
+    const velAttr = spSplashParticleSystem.geometry.attributes.velocity as THREE.BufferAttribute;
+    const posArray = posAttr.array as Float32Array;
+    const velArray = velAttr.array as Float32Array;
+    
+    // Position the splash emitter exactly at the liquid surface
+    spSplashParticleSystem.position.z = bottomZ - currentHeight;
+    
+    for (let i = 0; i < posArray.length / 3; i++) {
+      // Apply velocity
+      posArray[i * 3] += velArray[i * 3];
+      posArray[i * 3 + 1] += velArray[i * 3 + 1];
+      posArray[i * 3 + 2] += velArray[i * 3 + 2];
+      
+      // Apply gravity (positive Z is down/falling back to surface)
+      velArray[i * 3 + 2] += 0.008; 
+      
+      // If particle falls below the surface, reset it to jump out again
+      if (posArray[i * 3 + 2] > 0) {
+        posArray[i * 3] = (Math.random() - 0.5) * 0.15;
+        posArray[i * 3 + 1] = (Math.random() - 0.5) * 0.15;
+        posArray[i * 3 + 2] = 0;
+        
+        velArray[i * 3] = (Math.random() - 0.5) * 0.05;
+        velArray[i * 3 + 1] = (Math.random() - 0.5) * 0.05;
+        // Jump force depends on slosh intensity
+        velArray[i * 3 + 2] = -Math.random() * 0.15 - 0.05;
+      }
+    }
+    posAttr.needsUpdate = true;
+  } else if (spSplashParticleSystem) {
+     spSplashParticleSystem.visible = false;
+  }
+  
+  if (spSplashParticleSystem && pct > 0) {
+     spSplashParticleSystem.visible = true;
   }
 
   // Emissive Wave Glow
