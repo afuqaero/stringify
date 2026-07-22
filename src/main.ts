@@ -1181,8 +1181,7 @@ function restartGame() {
   updateComboUI();
   hudAccuracyVal.innerText = "100%";
   
-  switchState(GameState.PLAY);
-  playAudio();
+  startCountdownThenResume(true);
 }
 
 btnCompleteAgain.addEventListener('click', restartGame);
