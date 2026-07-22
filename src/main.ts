@@ -523,65 +523,69 @@ function generateScene(numLanes: number) {
     };
   }
 
-  // 3D Star Power Liquid Gauge (Guitar Hero Style - Aligned along Left Edge of Highway)
+  // 3D Star Power Liquid Gauge (Short Glass Bottle with Flowing Liquid Animation)
   spGaugeGroup = new THREE.Group();
 
-  const tubeLength = 14.0;
-  const tubeRadius = 0.08;
-  const leftEdgeX = startX - LANE_WIDTH / 2 - 0.16;
-  const bottomZ = RECEPTOR_Z + 0.8;
+  const tubeLength = 5.5;
+  const tubeRadius = 0.11;
+  const leftEdgeX = startX - LANE_WIDTH / 2 - 0.20;
+  const bottomZ = RECEPTOR_Z + 0.6;
 
-  // Outer Glass Cylinder Casing
+  // Outer Translucent Glass Cylinder Casing
   const glassGeo = new THREE.CylinderGeometry(tubeRadius, tubeRadius, tubeLength, 16);
   const glassMat = new THREE.MeshStandardMaterial({ 
-    color: 0x11162b, 
+    color: 0x1b2438, 
     roughness: 0.1, 
-    metalness: 0.8, 
+    metalness: 0.5, 
     transparent: true, 
-    opacity: 0.8 
+    opacity: 0.6 
   });
   const glassMesh = new THREE.Mesh(glassGeo, glassMat);
   glassMesh.rotation.x = Math.PI / 2;
-  glassMesh.position.set(leftEdgeX, 0.08, bottomZ - tubeLength / 2);
+  glassMesh.position.set(leftEdgeX, 0.1, bottomZ - tubeLength / 2);
   spGaugeGroup.add(glassMesh);
 
   // Chrome Caps (Top & Bottom Rings)
-  const capGeo = new THREE.CylinderGeometry(tubeRadius + 0.02, tubeRadius + 0.02, 0.25, 16);
+  const capGeo = new THREE.CylinderGeometry(tubeRadius + 0.025, tubeRadius + 0.025, 0.2, 16);
   const capMat = new THREE.MeshStandardMaterial({ color: 0x8899aa, metalness: 0.9, roughness: 0.2 });
   
   const bottomCap = new THREE.Mesh(capGeo, capMat);
   bottomCap.rotation.x = Math.PI / 2;
-  bottomCap.position.set(leftEdgeX, 0.08, bottomZ);
+  bottomCap.position.set(leftEdgeX, 0.1, bottomZ);
   spGaugeGroup.add(bottomCap);
 
   const topCap = new THREE.Mesh(capGeo, capMat);
   topCap.rotation.x = Math.PI / 2;
-  topCap.position.set(leftEdgeX, 0.08, bottomZ - tubeLength);
+  topCap.position.set(leftEdgeX, 0.1, bottomZ - tubeLength);
   spGaugeGroup.add(topCap);
 
-  // Inner Liquid Fill Cylinder
+  // Inner Glowing Orange Liquid Cylinder
   const liquidRadius = tubeRadius - 0.015;
   const liquidGeo = new THREE.CylinderGeometry(liquidRadius, liquidRadius, tubeLength, 16);
   spLiquidMaterial = new THREE.MeshStandardMaterial({ 
-    color: 0xff4500, 
-    emissive: 0xff6600, 
-    emissiveIntensity: 1.2, 
+    color: 0xff5500, 
+    emissive: 0xff7700, 
+    emissiveIntensity: 1.4, 
     transparent: true, 
     opacity: 0.95 
   });
   spLiquidFillMesh = new THREE.Mesh(liquidGeo, spLiquidMaterial);
   spLiquidFillMesh.rotation.x = Math.PI / 2;
-  spLiquidFillMesh.scale.set(1, 0.001, 1);
-  spLiquidFillMesh.position.set(leftEdgeX, 0.08, bottomZ);
+  spLiquidFillMesh.scale.set(1, 0.02, 1);
+  spLiquidFillMesh.position.set(leftEdgeX, 0.1, bottomZ);
   spGaugeGroup.add(spLiquidFillMesh);
 
-  // Liquid Top Cap Glowing Disc
-  const capDiscGeo = new THREE.CylinderGeometry(liquidRadius, liquidRadius, 0.05, 16);
-  const capDiscMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  // Liquid Glowing Surface Cap Disc (Meniscus)
+  const capDiscGeo = new THREE.CylinderGeometry(liquidRadius, liquidRadius, 0.04, 16);
+  const capDiscMat = new THREE.MeshStandardMaterial({ 
+    color: 0xffea88, 
+    emissive: 0xffaa00, 
+    emissiveIntensity: 2.0 
+  });
   spLiquidCapMesh = new THREE.Mesh(capDiscGeo, capDiscMat);
   spLiquidCapMesh.rotation.x = Math.PI / 2;
-  spLiquidCapMesh.position.set(leftEdgeX, 0.08, bottomZ);
-  spLiquidCapMesh.visible = false;
+  spLiquidCapMesh.position.set(leftEdgeX, 0.1, bottomZ);
+  spLiquidCapMesh.visible = true;
   spGaugeGroup.add(spLiquidCapMesh);
 
   scene.add(spGaugeGroup);
@@ -1479,8 +1483,9 @@ function updateStarPowerMeterUI() {
 
   spGaugeGroup.visible = true;
 
-  const tubeLength = 14.0;
-  const bottomZ = RECEPTOR_Z + 0.8;
+  const tubeLength = 5.5;
+  const bottomZ = RECEPTOR_Z + 0.6;
+  const time = performance.now();
 
   let pct = 0;
   if (isStarPowerActive) {
@@ -1491,29 +1496,30 @@ function updateStarPowerMeterUI() {
     pct = nextStarPowerThreshold === 0 ? 0 : Math.min(100, (combo / nextStarPowerThreshold) * 100);
   }
 
-  const fraction = Math.max(0.001, Math.min(1.0, pct / 100));
+  const baseFraction = Math.max(0.03, Math.min(1.0, pct / 100));
+
+  // Fluid wave sloshing motion inside bottle
+  const sloshWave = Math.sin(time * 0.006) * 0.025;
+  const fluidFraction = Math.max(0.03, Math.min(1.0, baseFraction + sloshWave));
 
   // Scale Y along cylinder (oriented along Z axis)
-  spLiquidFillMesh.scale.set(1, fraction, 1);
-  // Center position shifts as length expands from bottomZ upwards towards spawn line
-  spLiquidFillMesh.position.z = bottomZ - (fraction * tubeLength / 2);
+  spLiquidFillMesh.scale.set(1, fluidFraction, 1);
+  // Center position shifts as length expands from bottomZ upwards
+  spLiquidFillMesh.position.z = bottomZ - (fluidFraction * tubeLength / 2);
 
-  // Cap disc positioning
-  if (fraction > 0.02) {
-    spLiquidCapMesh.visible = true;
-    spLiquidCapMesh.position.z = bottomZ - (fraction * tubeLength);
-  } else {
-    spLiquidCapMesh.visible = false;
-  }
+  // Glowing liquid surface cap disc (meniscus sloshing wave)
+  spLiquidCapMesh.visible = true;
+  spLiquidCapMesh.position.z = bottomZ - (fluidFraction * tubeLength) + Math.sin(time * 0.008) * 0.015;
 
-  // Visual effects when Ready / Active
+  // Visual emissive wave glow when Ready / Active / Charging
   if (isStarPowerActive || isStarPowerReady) {
-    const glow = 1.5 + Math.sin(performance.now() * 0.015) * 0.8;
+    const glow = 1.8 + Math.sin(time * 0.015) * 0.8;
     spLiquidMaterial.emissive.setHex(isStarPowerActive ? 0xff3300 : 0xffaa00);
     spLiquidMaterial.emissiveIntensity = glow;
   } else {
-    spLiquidMaterial.emissive.setHex(0xff5500);
-    spLiquidMaterial.emissiveIntensity = 1.2;
+    const waveGlow = 1.3 + Math.sin(time * 0.005) * 0.3;
+    spLiquidMaterial.emissive.setHex(0xff6600);
+    spLiquidMaterial.emissiveIntensity = waveGlow;
   }
 }
 
