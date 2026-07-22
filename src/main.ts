@@ -525,52 +525,75 @@ function generateScene(numLanes: number) {
     };
   }
 
-  // Pure Glowing Neon Orange Fluid Beam & Swirling Particles (NO vial/dark casing)
+  // 3D Star Power Liquid Gauge (Transparent Glass Vial with Glowing Liquid)
   spGaugeGroup = new THREE.Group();
 
   const tubeLength = 6.0;
-  const liquidRadius = 0.08;
-  const leftEdgeX = startX - LANE_WIDTH / 2 - 0.12;
-  const bottomZ = RECEPTOR_Z + 0.5;
+  const tubeRadius = 0.12;
+  const leftEdgeX = startX - LANE_WIDTH / 2 - 0.20;
+  const bottomZ = RECEPTOR_Z + 0.6;
 
-  // 1. Subtle Dark Rail Guide (shows max capacity length)
-  const railGeo = new THREE.CylinderGeometry(0.02, 0.02, tubeLength, 8);
-  const railMat = new THREE.MeshBasicMaterial({ color: 0x3ca2f4, transparent: true, opacity: 0.25 });
-  const railMesh = new THREE.Mesh(railGeo, railMat);
-  railMesh.rotation.x = Math.PI / 2;
-  railMesh.position.set(leftEdgeX, 0.04, bottomZ - tubeLength / 2);
-  spGaugeGroup.add(railMesh);
+  // Outer Transparent Glass Cylinder Casing
+  const glassGeo = new THREE.CylinderGeometry(tubeRadius, tubeRadius, tubeLength, 16);
+  const glassMat = new THREE.MeshStandardMaterial({ 
+    color: 0xffffff, 
+    roughness: 0.05, 
+    metalness: 0.95, 
+    transparent: true, 
+    opacity: 0.15, // Highly transparent glass
+    depthWrite: false // Don't occlude inner liquid
+  });
+  const glassMesh = new THREE.Mesh(glassGeo, glassMat);
+  glassMesh.rotation.x = Math.PI / 2;
+  glassMesh.position.set(leftEdgeX, 0.1, bottomZ - tubeLength / 2);
+  spGaugeGroup.add(glassMesh);
 
-  // 2. Main Glowing Neon Orange Liquid Beam
+  // Chrome Caps (Top & Bottom Rings)
+  const capGeo = new THREE.CylinderGeometry(tubeRadius + 0.015, tubeRadius + 0.015, 0.2, 16);
+  const capMat = new THREE.MeshStandardMaterial({ color: 0x556677, metalness: 0.9, roughness: 0.3 });
+  
+  const bottomCap = new THREE.Mesh(capGeo, capMat);
+  bottomCap.rotation.x = Math.PI / 2;
+  bottomCap.position.set(leftEdgeX, 0.1, bottomZ);
+  spGaugeGroup.add(bottomCap);
+
+  const topCap = new THREE.Mesh(capGeo, capMat);
+  topCap.rotation.x = Math.PI / 2;
+  topCap.position.set(leftEdgeX, 0.1, bottomZ - tubeLength);
+  spGaugeGroup.add(topCap);
+
+  // Inner Glowing Orange Liquid Cylinder
+  const liquidRadius = tubeRadius - 0.015;
   const liquidGeo = new THREE.CylinderGeometry(liquidRadius, liquidRadius, tubeLength, 16);
   spLiquidMaterial = new THREE.MeshStandardMaterial({ 
-    color: 0xff3300, 
-    emissive: 0xff6600, 
-    emissiveIntensity: 2.2, 
+    color: 0xff5500, 
+    emissive: 0xff7700, 
+    emissiveIntensity: 1.8, 
     transparent: true, 
-    opacity: 0.9,
+    opacity: 0.95,
     blending: THREE.AdditiveBlending
   });
   spLiquidFillMesh = new THREE.Mesh(liquidGeo, spLiquidMaterial);
   spLiquidFillMesh.rotation.x = Math.PI / 2;
   spLiquidFillMesh.scale.set(1, 0.02, 1);
-  spLiquidFillMesh.position.set(leftEdgeX, 0.05, bottomZ);
+  spLiquidFillMesh.position.set(leftEdgeX, 0.1, bottomZ);
   spGaugeGroup.add(spLiquidFillMesh);
 
-  // 3. Glowing Neon Cap Sphere (meniscus head)
-  const capDiscGeo = new THREE.SphereGeometry(liquidRadius * 1.3, 16, 16);
+  // Liquid Glowing Surface Cap Disc (Meniscus)
+  const capDiscGeo = new THREE.CylinderGeometry(liquidRadius, liquidRadius, 0.04, 16);
   const capDiscMat = new THREE.MeshStandardMaterial({ 
     color: 0xffea88, 
     emissive: 0xffaa00, 
-    emissiveIntensity: 3.0,
+    emissiveIntensity: 2.0,
     blending: THREE.AdditiveBlending 
   });
   spLiquidCapMesh = new THREE.Mesh(capDiscGeo, capDiscMat);
-  spLiquidCapMesh.position.set(leftEdgeX, 0.05, bottomZ);
+  spLiquidCapMesh.rotation.x = Math.PI / 2;
+  spLiquidCapMesh.position.set(leftEdgeX, 0.1, bottomZ);
   spLiquidCapMesh.visible = true;
   spGaugeGroup.add(spLiquidCapMesh);
 
-  // 4. Sparkling Swirling Fluid Particles
+  // Sparkling Swirling Fluid Particles
   const particleCount = 40;
   const pPositions = new Float32Array(particleCount * 3);
   for (let i = 0; i < particleCount; i++) {
@@ -588,7 +611,7 @@ function generateScene(numLanes: number) {
     blending: THREE.AdditiveBlending
   });
   spParticleSystem = new THREE.Points(pGeo, pMat);
-  spParticleSystem.position.set(leftEdgeX, 0.05, bottomZ);
+  spParticleSystem.position.set(leftEdgeX, 0.1, bottomZ);
   spGaugeGroup.add(spParticleSystem);
 
   scene.add(spGaugeGroup);
