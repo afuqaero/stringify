@@ -56,7 +56,7 @@ const floatingComboVal = document.getElementById('floating-combo-val')!;
 
 const floatingStarPower = document.getElementById('floating-star-power')!;
 
-const starPowerMeterContainer = document.getElementById('star-power-meter-container')!;
+const floatingStarMeter = document.getElementById('floating-star-meter')!;
 const spMeterBar = document.getElementById('sp-meter-bar')!;
 const spMeterStatus = document.getElementById('sp-meter-status')!;
 
@@ -749,7 +749,7 @@ function switchState(newState: GameState) {
   statsHud.classList.add('hidden');
   floatingCombo.style.opacity = '0';
   recordIndicator.classList.add('hidden');
-  starPowerMeterContainer.classList.add('hidden');
+  floatingStarMeter.classList.add('hidden');
   hamburgerBtn.style.display = 'none';
   hamburgerMenu.classList.remove('open');
   hamburgerBtn.classList.remove('open');
@@ -1396,29 +1396,29 @@ function updateComboUI() {
 
 function updateStarPowerMeterUI() {
   if (currentState !== GameState.PLAY && currentState !== GameState.INTRO) {
-    starPowerMeterContainer.classList.add('hidden');
-    starPowerMeterContainer.classList.remove('active');
+    floatingStarMeter.classList.add('hidden');
+    floatingStarMeter.classList.remove('active');
     return;
   }
 
-  starPowerMeterContainer.classList.remove('hidden');
-  starPowerMeterContainer.classList.add('active');
+  floatingStarMeter.classList.remove('hidden');
+  floatingStarMeter.classList.add('active');
 
   if (isStarPowerActive) {
-    starPowerMeterContainer.classList.remove('ready');
-    starPowerMeterContainer.classList.add('active-mode');
+    floatingStarMeter.classList.remove('ready');
+    floatingStarMeter.classList.add('active-mode');
     const pct = Math.max(0, Math.min(100, Math.round((starPowerTimer / 10) * 100)));
     spMeterBar.style.width = `${pct}%`;
     spMeterStatus.innerText = `ACTIVE (${Math.ceil(starPowerTimer)}s)`;
     spMeterStatus.style.color = '#ff5500';
   } else if (isStarPowerReady) {
-    starPowerMeterContainer.classList.add('ready');
-    starPowerMeterContainer.classList.remove('active-mode');
+    floatingStarMeter.classList.add('ready');
+    floatingStarMeter.classList.remove('active-mode');
     spMeterBar.style.width = '100%';
     spMeterStatus.innerText = 'READY [SPACE]';
     spMeterStatus.style.color = 'var(--accent)';
   } else {
-    starPowerMeterContainer.classList.remove('ready', 'active-mode');
+    floatingStarMeter.classList.remove('ready', 'active-mode');
     const pct = nextStarPowerThreshold === 0 ? 0 : Math.min(100, Math.round((combo / nextStarPowerThreshold) * 100));
     spMeterBar.style.width = `${pct}%`;
     spMeterStatus.innerText = `${pct}%`;
