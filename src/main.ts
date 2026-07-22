@@ -101,10 +101,9 @@ const BG_TRACKS = [
   '/Mirrorball Rebel.mp3',
   '/Neon Kiss.mp3',
 ];
+const pickRandomTrack = () => BG_TRACKS[Math.floor(Math.random() * BG_TRACKS.length)];
 const bgMusic = document.getElementById('bg-music') as HTMLAudioElement;
 if (bgMusic) {
-  const pickRandomTrack = () => BG_TRACKS[Math.floor(Math.random() * BG_TRACKS.length)];
-  
   bgMusic.src = pickRandomTrack();
   bgMusic.volume = 0.4; // 40% volume
 
