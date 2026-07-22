@@ -58,7 +58,6 @@ const floatingStarPower = document.getElementById('floating-star-power')!;
 
 const floatingStarMeter = document.getElementById('floating-star-meter')!;
 const spMeterBar = document.getElementById('sp-meter-bar')!;
-const spMeterStatus = document.getElementById('sp-meter-status')!;
 
 // Hamburger menu
 const hamburgerBtn = document.getElementById('hamburger-btn') as HTMLButtonElement;
@@ -1408,21 +1407,15 @@ function updateStarPowerMeterUI() {
     floatingStarMeter.classList.remove('ready');
     floatingStarMeter.classList.add('active-mode');
     const pct = Math.max(0, Math.min(100, Math.round((starPowerTimer / 10) * 100)));
-    spMeterBar.style.width = `${pct}%`;
-    spMeterStatus.innerText = `ACTIVE (${Math.ceil(starPowerTimer)}s)`;
-    spMeterStatus.style.color = '#ff5500';
+    spMeterBar.style.height = `${pct}%`;
   } else if (isStarPowerReady) {
     floatingStarMeter.classList.add('ready');
     floatingStarMeter.classList.remove('active-mode');
-    spMeterBar.style.width = '100%';
-    spMeterStatus.innerText = 'READY [SPACE]';
-    spMeterStatus.style.color = 'var(--accent)';
+    spMeterBar.style.height = '100%';
   } else {
     floatingStarMeter.classList.remove('ready', 'active-mode');
     const pct = nextStarPowerThreshold === 0 ? 0 : Math.min(100, Math.round((combo / nextStarPowerThreshold) * 100));
-    spMeterBar.style.width = `${pct}%`;
-    spMeterStatus.innerText = `${pct}%`;
-    spMeterStatus.style.color = 'var(--text-muted)';
+    spMeterBar.style.height = `${pct}%`;
   }
 }
 
