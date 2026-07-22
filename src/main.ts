@@ -174,7 +174,8 @@ let introAnimationStartTime = 0;
 let isStarPowerReady = false;
 let isStarPowerActive = false;
 let starPowerTimer = 0;
-let nextStarPowerThreshold = 60;
+let starPowerCharge = 0;
+const STAR_POWER_MAX_CHARGE = 60;
 let fireParticles: { mesh: THREE.Mesh, life: number, maxLife: number, velocity: THREE.Vector3, initialScale: number }[] = [];
 let activeLightning: { mesh: THREE.Mesh, life: number }[] = [];
 
@@ -1308,6 +1309,8 @@ function restartGame() {
   totalHits = 0;
   totalNotesProcessed = 0;
   pausedOffset = 0;
+  starPowerCharge = 0;
+  isStarPowerReady = false;
   
   hudSongVal.innerText = currentSongName;
   hudLanesVal.innerText = numLanes.toString();
@@ -1497,7 +1500,7 @@ function updateComboUI() {
     floatingCombo.classList.remove('combo-pop');
     
     if (!isStarPowerActive) {
-      nextStarPowerThreshold = 60;
+      starPowerCharge = 0;
       isStarPowerReady = false;
       floatingStarPower.classList.remove('active');
     }
@@ -1526,7 +1529,7 @@ function updateStarPowerMeterUI() {
   } else if (isStarPowerReady) {
     pct = 100;
   } else {
-    pct = nextStarPowerThreshold === 0 ? 0 : Math.min(100, (combo / nextStarPowerThreshold) * 100);
+    pct = Math.min(100, (starPowerCharge / STAR_POWER_MAX_CHARGE) * 100);
   }
 
   const baseFraction = Math.max(0.02, Math.min(1.0, pct / 100));
@@ -1610,7 +1613,7 @@ function stopAudio() {
   isStarPowerReady = false;
   isStarPowerActive = false;
   starPowerTimer = 0;
-  nextStarPowerThreshold = 60;
+  starPowerCharge = 0;
   floatingStarPower.classList.remove('active');
   
   hudScoreVal.innerText = score.toString();
@@ -1664,12 +1667,15 @@ function checkHit(lane: number) {
           updateAccuracy();
         }
         
-        if (!isStarPowerActive && combo >= nextStarPowerThreshold && !isStarPowerReady) {
-          isStarPowerReady = true;
-          floatingStarPower.classList.add('active');
-          setTimeout(() => {
-            floatingStarPower.classList.remove('active');
-          }, 3000);
+        if (!isStarPowerActive && !isStarPowerReady) {
+          starPowerCharge++;
+          if (starPowerCharge >= STAR_POWER_MAX_CHARGE) {
+            isStarPowerReady = true;
+            floatingStarPower.classList.add('active');
+            setTimeout(() => {
+              floatingStarPower.classList.remove('active');
+            }, 3000);
+          }
         }
         
         spawnParticles(receptors[lane].position, COLORS[lane % COLORS.length]);
@@ -1687,6 +1693,11 @@ function checkHit(lane: number) {
   playMissSound();
   combo = 0;
   updateComboUI();
+  if (!isStarPowerActive) {
+    starPowerCharge = 0;
+    isStarPowerReady = false;
+    floatingStarPower.classList.remove('active');
+  }
 }
 
 // Single core song upload handler
@@ -2036,7 +2047,7 @@ function animate() {
     isStarPowerReady = false;
     isStarPowerActive = true;
     starPowerTimer = 10;
-    nextStarPowerThreshold = combo + 70;
+    starPowerCharge = 0;
     playStarPowerSound();
     
     floatingStarPower.classList.remove('active');
@@ -2425,6 +2436,12 @@ function animate() {
         totalNotesProcessed++;
         updateComboUI();
         updateAccuracy();
+        
+        if (!isStarPowerActive) {
+          starPowerCharge = 0;
+          isStarPowerReady = false;
+          floatingStarPower.classList.remove('active');
+        }
         
         if (!(note.duration && note.duration > 0.15)) {
           // Tap note complete miss
