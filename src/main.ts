@@ -56,8 +56,10 @@ const floatingComboVal = document.getElementById('floating-combo-val')!;
 
 const floatingStarPower = document.getElementById('floating-star-power')!;
 
-const floatingStarMeter = document.getElementById('floating-star-meter')!;
-const spMeterBar = document.getElementById('sp-meter-bar')!;
+let spGaugeGroup: THREE.Group | null = null;
+let spLiquidFillMesh: THREE.Mesh | null = null;
+let spLiquidCapMesh: THREE.Mesh | null = null;
+let spLiquidMaterial: THREE.MeshStandardMaterial | null = null;
 
 // Hamburger menu
 const hamburgerBtn = document.getElementById('hamburger-btn') as HTMLButtonElement;
@@ -365,6 +367,18 @@ function generateScene(numLanes: number) {
     b.geometry.dispose();
     (b.material as THREE.Material).dispose();
   });
+  if (spGaugeGroup) {
+    scene.remove(spGaugeGroup);
+    spGaugeGroup.traverse(child => {
+      const m = child as THREE.Mesh;
+      if (m.geometry) m.geometry.dispose();
+      if (m.material) (m.material as THREE.Material).dispose();
+    });
+    spGaugeGroup = null;
+    spLiquidFillMesh = null;
+    spLiquidCapMesh = null;
+    spLiquidMaterial = null;
+  }
   separators = [];
   receptors = [];
   highwayBars = [];
@@ -508,6 +522,69 @@ function generateScene(numLanes: number) {
       key: keyBind
     };
   }
+
+  // 3D Star Power Liquid Gauge (Guitar Hero Style - Aligned along Left Edge of Highway)
+  spGaugeGroup = new THREE.Group();
+
+  const tubeLength = 14.0;
+  const tubeRadius = 0.08;
+  const leftEdgeX = startX - LANE_WIDTH / 2 - 0.16;
+  const bottomZ = RECEPTOR_Z + 0.8;
+
+  // Outer Glass Cylinder Casing
+  const glassGeo = new THREE.CylinderGeometry(tubeRadius, tubeRadius, tubeLength, 16);
+  const glassMat = new THREE.MeshStandardMaterial({ 
+    color: 0x11162b, 
+    roughness: 0.1, 
+    metalness: 0.8, 
+    transparent: true, 
+    opacity: 0.8 
+  });
+  const glassMesh = new THREE.Mesh(glassGeo, glassMat);
+  glassMesh.rotation.x = Math.PI / 2;
+  glassMesh.position.set(leftEdgeX, 0.08, bottomZ - tubeLength / 2);
+  spGaugeGroup.add(glassMesh);
+
+  // Chrome Caps (Top & Bottom Rings)
+  const capGeo = new THREE.CylinderGeometry(tubeRadius + 0.02, tubeRadius + 0.02, 0.25, 16);
+  const capMat = new THREE.MeshStandardMaterial({ color: 0x8899aa, metalness: 0.9, roughness: 0.2 });
+  
+  const bottomCap = new THREE.Mesh(capGeo, capMat);
+  bottomCap.rotation.x = Math.PI / 2;
+  bottomCap.position.set(leftEdgeX, 0.08, bottomZ);
+  spGaugeGroup.add(bottomCap);
+
+  const topCap = new THREE.Mesh(capGeo, capMat);
+  topCap.rotation.x = Math.PI / 2;
+  topCap.position.set(leftEdgeX, 0.08, bottomZ - tubeLength);
+  spGaugeGroup.add(topCap);
+
+  // Inner Liquid Fill Cylinder
+  const liquidRadius = tubeRadius - 0.015;
+  const liquidGeo = new THREE.CylinderGeometry(liquidRadius, liquidRadius, tubeLength, 16);
+  spLiquidMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0xff4500, 
+    emissive: 0xff6600, 
+    emissiveIntensity: 1.2, 
+    transparent: true, 
+    opacity: 0.95 
+  });
+  spLiquidFillMesh = new THREE.Mesh(liquidGeo, spLiquidMaterial);
+  spLiquidFillMesh.rotation.x = Math.PI / 2;
+  spLiquidFillMesh.scale.set(1, 0.001, 1);
+  spLiquidFillMesh.position.set(leftEdgeX, 0.08, bottomZ);
+  spGaugeGroup.add(spLiquidFillMesh);
+
+  // Liquid Top Cap Glowing Disc
+  const capDiscGeo = new THREE.CylinderGeometry(liquidRadius, liquidRadius, 0.05, 16);
+  const capDiscMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  spLiquidCapMesh = new THREE.Mesh(capDiscGeo, capDiscMat);
+  spLiquidCapMesh.rotation.x = Math.PI / 2;
+  spLiquidCapMesh.position.set(leftEdgeX, 0.08, bottomZ);
+  spLiquidCapMesh.visible = false;
+  spGaugeGroup.add(spLiquidCapMesh);
+
+  scene.add(spGaugeGroup);
 }
 
 // Initial default scene
@@ -748,7 +825,6 @@ function switchState(newState: GameState) {
   statsHud.classList.add('hidden');
   floatingCombo.style.opacity = '0';
   recordIndicator.classList.add('hidden');
-  floatingStarMeter.classList.add('hidden');
   hamburgerBtn.style.display = 'none';
   hamburgerMenu.classList.remove('open');
   hamburgerBtn.classList.remove('open');
@@ -1394,28 +1470,50 @@ function updateComboUI() {
 }
 
 function updateStarPowerMeterUI() {
+  if (!spGaugeGroup || !spLiquidFillMesh || !spLiquidCapMesh || !spLiquidMaterial) return;
+
   if (currentState !== GameState.PLAY && currentState !== GameState.INTRO) {
-    floatingStarMeter.classList.add('hidden');
-    floatingStarMeter.classList.remove('active');
+    spGaugeGroup.visible = false;
     return;
   }
 
-  floatingStarMeter.classList.remove('hidden');
-  floatingStarMeter.classList.add('active');
+  spGaugeGroup.visible = true;
 
+  const tubeLength = 14.0;
+  const bottomZ = RECEPTOR_Z + 0.8;
+
+  let pct = 0;
   if (isStarPowerActive) {
-    floatingStarMeter.classList.remove('ready');
-    floatingStarMeter.classList.add('active-mode');
-    const pct = Math.max(0, Math.min(100, Math.round((starPowerTimer / 10) * 100)));
-    spMeterBar.style.height = `${pct}%`;
+    pct = Math.max(0, Math.min(100, (starPowerTimer / 10) * 100));
   } else if (isStarPowerReady) {
-    floatingStarMeter.classList.add('ready');
-    floatingStarMeter.classList.remove('active-mode');
-    spMeterBar.style.height = '100%';
+    pct = 100;
   } else {
-    floatingStarMeter.classList.remove('ready', 'active-mode');
-    const pct = nextStarPowerThreshold === 0 ? 0 : Math.min(100, Math.round((combo / nextStarPowerThreshold) * 100));
-    spMeterBar.style.height = `${pct}%`;
+    pct = nextStarPowerThreshold === 0 ? 0 : Math.min(100, (combo / nextStarPowerThreshold) * 100);
+  }
+
+  const fraction = Math.max(0.001, Math.min(1.0, pct / 100));
+
+  // Scale Y along cylinder (oriented along Z axis)
+  spLiquidFillMesh.scale.set(1, fraction, 1);
+  // Center position shifts as length expands from bottomZ upwards towards spawn line
+  spLiquidFillMesh.position.z = bottomZ - (fraction * tubeLength / 2);
+
+  // Cap disc positioning
+  if (fraction > 0.02) {
+    spLiquidCapMesh.visible = true;
+    spLiquidCapMesh.position.z = bottomZ - (fraction * tubeLength);
+  } else {
+    spLiquidCapMesh.visible = false;
+  }
+
+  // Visual effects when Ready / Active
+  if (isStarPowerActive || isStarPowerReady) {
+    const glow = 1.5 + Math.sin(performance.now() * 0.015) * 0.8;
+    spLiquidMaterial.emissive.setHex(isStarPowerActive ? 0xff3300 : 0xffaa00);
+    spLiquidMaterial.emissiveIntensity = glow;
+  } else {
+    spLiquidMaterial.emissive.setHex(0xff5500);
+    spLiquidMaterial.emissiveIntensity = 1.2;
   }
 }
 
