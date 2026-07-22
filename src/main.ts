@@ -56,6 +56,10 @@ const floatingComboVal = document.getElementById('floating-combo-val')!;
 
 const floatingStarPower = document.getElementById('floating-star-power')!;
 
+const starPowerMeterContainer = document.getElementById('star-power-meter-container')!;
+const spMeterBar = document.getElementById('sp-meter-bar')!;
+const spMeterStatus = document.getElementById('sp-meter-status')!;
+
 // Hamburger menu
 const hamburgerBtn = document.getElementById('hamburger-btn') as HTMLButtonElement;
 const hamburgerMenu = document.getElementById('hamburger-menu')!;
@@ -1385,6 +1389,38 @@ function updateComboUI() {
       floatingStarPower.classList.remove('active');
     }
   }
+
+  updateStarPowerMeterUI();
+}
+
+function updateStarPowerMeterUI() {
+  if (currentState !== GameState.PLAY && currentState !== GameState.INTRO) {
+    starPowerMeterContainer.classList.remove('active');
+    return;
+  }
+
+  starPowerMeterContainer.classList.add('active');
+
+  if (isStarPowerActive) {
+    starPowerMeterContainer.classList.remove('ready');
+    starPowerMeterContainer.classList.add('active-mode');
+    const pct = Math.max(0, Math.min(100, Math.round((starPowerTimer / 10) * 100)));
+    spMeterBar.style.width = `${pct}%`;
+    spMeterStatus.innerText = `ACTIVE (${Math.ceil(starPowerTimer)}s)`;
+    spMeterStatus.style.color = '#ff5500';
+  } else if (isStarPowerReady) {
+    starPowerMeterContainer.classList.add('ready');
+    starPowerMeterContainer.classList.remove('active-mode');
+    spMeterBar.style.width = '100%';
+    spMeterStatus.innerText = 'READY [SPACE]';
+    spMeterStatus.style.color = 'var(--accent)';
+  } else {
+    starPowerMeterContainer.classList.remove('ready', 'active-mode');
+    const pct = nextStarPowerThreshold === 0 ? 0 : Math.min(100, Math.round((combo / nextStarPowerThreshold) * 100));
+    spMeterBar.style.width = `${pct}%`;
+    spMeterStatus.innerText = `${pct}%`;
+    spMeterStatus.style.color = 'var(--text-muted)';
+  }
 }
 
 function stopAudio() {
@@ -1852,6 +1888,7 @@ function animate() {
   
   if (isStarPowerActive) {
     starPowerTimer -= dt;
+    updateStarPowerMeterUI();
     if (starPowerTimer <= 0) {
       isStarPowerActive = false;
       
