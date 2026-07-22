@@ -125,6 +125,21 @@ function triggerBgMusic(play: boolean) {
   }
 }
 
+function duckMusicVolume() {
+  if (mainTrackGainNode && audioContext) {
+    mainTrackGainNode.gain.cancelScheduledValues(audioContext.currentTime);
+    mainTrackGainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.1);
+  }
+}
+
+function restoreMusicVolume() {
+  if (mainTrackGainNode && audioContext) {
+    const target = isStarPowerActive ? 0.65 : 1.0;
+    mainTrackGainNode.gain.cancelScheduledValues(audioContext.currentTime);
+    mainTrackGainNode.gain.linearRampToValueAtTime(target, audioContext.currentTime + 0.1);
+  }
+}
+
 // Game State variables
 let audioContext: AudioContext;
 let audioSource: AudioBufferSourceNode | null = null;
@@ -1410,6 +1425,7 @@ function checkHit(lane: number) {
       const timeDiff = currentTime - note.time; // positive = note already passed receptor
       if (timeDiff >= -earlyWindow && timeDiff <= lateWindow) {
         note.hit = true;
+        restoreMusicVolume();
         
         // Snap the note's group position directly to the receptor's X/Y/Z position
         note.group.position.set(receptors[lane].position.x, receptors[lane].position.y, RECEPTOR_Z);
@@ -2424,6 +2440,7 @@ function playBubbleSound() {
 
 // Missed Note Sound effect with variants from file
 function playMissSound() {
+  duckMusicVolume();
   try {
     const ctx = audioContext || new (window.AudioContext || (window as any).webkitAudioContext)();
     if (!ctx) return;
