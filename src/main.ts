@@ -714,7 +714,7 @@ function sanitizeChart(rawData: any): { time: number, lane: number, duration?: n
 
 // Update UI state
 function switchState(newState: GameState) {
-  const shouldPlayBgMusic = (newState === GameState.TITLE);
+  const shouldPlayBgMusic = (newState === GameState.TITLE || newState === GameState.HUB);
   triggerBgMusic(shouldPlayBgMusic);
   currentState = newState;
   screenTitle.classList.add('hidden');
@@ -2342,6 +2342,7 @@ function playStarPowerSound() {
         spSource.connect(spGain);
         spGain.connect(ctx.destination);
         spSource.start(now);
+        spSource.stop(now + 2.5); // Only play the initial strike, avoid thunder loop
       }
 
       // --- Crowd Applause (simultaneous, no delay) ---
