@@ -1524,8 +1524,8 @@ function updateStarPowerMeterUI() {
 
   const baseFraction = Math.max(0.02, Math.min(1.0, pct / 100));
 
-  // Fluid wave sloshing motion
-  const sloshWave = Math.sin(time * 0.007) * 0.02;
+  // Fluid wave sloshing motion (dynamic physics)
+  const sloshWave = Math.sin(time * 0.006) * 0.025 + Math.cos(time * 0.015) * 0.015;
   const fluidFraction = Math.max(0.02, Math.min(1.0, baseFraction + sloshWave));
   const currentHeight = fluidFraction * tubeLength;
 
@@ -1541,15 +1541,15 @@ function updateStarPowerMeterUI() {
     const attr = spParticleSystem.geometry.attributes.position as THREE.BufferAttribute;
     const array = attr.array as Float32Array;
     for (let i = 0; i < array.length / 3; i++) {
-      // Swirl along X and Y
+      // Swirl along X and Y (turbulent bubbles)
       const angle = time * 0.003 + i;
-      array[i * 3] = Math.cos(angle) * 0.05;
-      array[i * 3 + 1] = Math.sin(angle) * 0.05;
+      array[i * 3] = Math.cos(angle) * 0.06;
+      array[i * 3 + 1] = Math.sin(angle * 1.5) * 0.06;
 
-      // Flow up/back along Z inside current liquid height
-      let pZ = array[i * 3 + 2] - 0.03;
+      // Flow up/back along Z inside current liquid height (fizzy bubbles rising)
+      let pZ = array[i * 3 + 2] - 0.04; // bubble rise speed
       if (pZ < -currentHeight) {
-        pZ = 0;
+        pZ = 0; // reset to bottom of fluid when reaching surface
       }
       array[i * 3 + 2] = pZ;
     }
@@ -2033,7 +2033,6 @@ function animate() {
   
   if (isStarPowerActive) {
     starPowerTimer -= dt;
-    updateStarPowerMeterUI();
     if (starPowerTimer <= 0) {
       isStarPowerActive = false;
       
@@ -2451,6 +2450,9 @@ function animate() {
       p.mesh.scale.setScalar(p.life * initScale);
     }
   }
+
+  // Update Star Power continuous visual effects (liquid sloshing, swirling particles)
+  updateStarPowerMeterUI();
 
   renderer.render(scene, camera);
   input.update();
