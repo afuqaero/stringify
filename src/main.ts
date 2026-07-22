@@ -749,6 +749,7 @@ function switchState(newState: GameState) {
   statsHud.classList.add('hidden');
   floatingCombo.style.opacity = '0';
   recordIndicator.classList.add('hidden');
+  starPowerMeterContainer.classList.add('hidden');
   hamburgerBtn.style.display = 'none';
   hamburgerMenu.classList.remove('open');
   hamburgerBtn.classList.remove('open');
@@ -1395,10 +1396,12 @@ function updateComboUI() {
 
 function updateStarPowerMeterUI() {
   if (currentState !== GameState.PLAY && currentState !== GameState.INTRO) {
+    starPowerMeterContainer.classList.add('hidden');
     starPowerMeterContainer.classList.remove('active');
     return;
   }
 
+  starPowerMeterContainer.classList.remove('hidden');
   starPowerMeterContainer.classList.add('active');
 
   if (isStarPowerActive) {
