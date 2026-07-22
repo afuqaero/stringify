@@ -1078,13 +1078,29 @@ function showCompleteScreen() {
     
     const missed = Math.max(0, totalNotesProcessed - totalHits);
     const acc = totalNotesProcessed === 0 ? 100 : Math.round((totalHits / totalNotesProcessed) * 100);
+    const finalScore = Math.round(score);
+    
+    const prevBest = parseInt(localStorage.getItem(`best_score_${currentSongName}`) || '0', 10);
+    let bestToDisplay = prevBest;
+    let isNewBest = false;
+    
+    if (finalScore > prevBest && finalScore > 0) {
+      isNewBest = true;
+      bestToDisplay = finalScore;
+      localStorage.setItem(`best_score_${currentSongName}`, finalScore.toString());
+    }
     
     if (statsSummary) {
       statsSummary.innerHTML = `
         <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 1.15rem;">
           <span style="color: var(--text-muted);">Final Score:</span>
-          <span id="complete-score" style="font-weight: 900; color: #ffffff;">${Math.round(score)}</span>
+          <span id="complete-score" style="font-weight: 900; color: #ffffff;">${finalScore}</span>
         </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 1.15rem;">
+          <span style="color: var(--text-muted);">Best Score:</span>
+          <span id="complete-best-score" style="font-weight: 900; color: var(--accent);">${bestToDisplay}</span>
+        </div>
+        ${isNewBest ? '<div style="color: var(--accent); font-weight: 900; font-size: 1rem; margin-bottom: 10px; text-align: right; text-transform: uppercase;"><i class="fa-solid fa-crown"></i> New Best Score!</div>' : ''}
         <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 1.15rem;">
           <span style="color: var(--text-muted);">Accuracy:</span>
           <span id="complete-accuracy" style="font-weight: 900; color: #ffffff;">${acc}%</span>
