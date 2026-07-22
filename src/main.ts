@@ -117,9 +117,13 @@ if (bgMusic) {
 function triggerBgMusic(play: boolean) {
   if (!bgMusic) return;
   if (play) {
-    bgMusic.play().catch(() => {
-      // Catch autoplay block — will play on first user interaction
-    });
+    if (bgMusic.paused) {
+      // Force reload the audio track to prevent browser from dropping the suspended audio buffer
+      // after a long gameplay session.
+      bgMusic.src = pickRandomTrack();
+      bgMusic.volume = 0.4;
+      bgMusic.play().catch(() => {});
+    }
   } else {
     bgMusic.pause();
   }
