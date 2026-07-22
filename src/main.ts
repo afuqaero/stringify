@@ -61,7 +61,6 @@ let spLiquidFillMesh: THREE.Mesh | null = null;
 let spLiquidCapGroup: THREE.Group | null = null;
 let spLiquidMaterial: THREE.MeshStandardMaterial | null = null;
 let spParticleSystem: THREE.Points | null = null;
-let spSplashParticleSystem: THREE.Points | null = null;
 
 // Hamburger menu
 const hamburgerBtn = document.getElementById('hamburger-btn') as HTMLButtonElement;
@@ -381,7 +380,6 @@ function generateScene(numLanes: number) {
     spLiquidCapGroup = null;
     spLiquidMaterial = null;
     spParticleSystem = null;
-    spSplashParticleSystem = null;
   }
   separators = [];
   receptors = [];
@@ -622,34 +620,6 @@ function generateScene(numLanes: number) {
   spParticleSystem = new THREE.Points(pGeo, pMat);
   spParticleSystem.position.set(leftEdgeX, 0.1, bottomZ);
   spGaugeGroup.add(spParticleSystem);
-
-  // Splashing Particles (Surface Drops)
-  const splashCount = 30;
-  const splashPos = new Float32Array(splashCount * 3);
-  const splashVel = new Float32Array(splashCount * 3);
-  for(let i=0; i<splashCount; i++) {
-    splashPos[i*3] = (Math.random() - 0.5) * 0.15;
-    splashPos[i*3+1] = (Math.random() - 0.5) * 0.15;
-    splashPos[i*3+2] = 0; // Starts at surface level Z
-    
-    // Velocities for jumping up (negative Z is up)
-    splashVel[i*3] = (Math.random() - 0.5) * 0.1;
-    splashVel[i*3+1] = (Math.random() - 0.5) * 0.1;
-    splashVel[i*3+2] = -Math.random() * 0.2 - 0.1;
-  }
-  const splashGeo = new THREE.BufferGeometry();
-  splashGeo.setAttribute('position', new THREE.BufferAttribute(splashPos, 3));
-  splashGeo.setAttribute('velocity', new THREE.BufferAttribute(splashVel, 3));
-  const splashMat = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 0.08,
-    transparent: true,
-    opacity: 1.0,
-    blending: THREE.AdditiveBlending
-  });
-  spSplashParticleSystem = new THREE.Points(splashGeo, splashMat);
-  spSplashParticleSystem.position.set(leftEdgeX, 0.1, bottomZ);
-  spGaugeGroup.add(spSplashParticleSystem);
 
   scene.add(spGaugeGroup);
 }
@@ -1599,46 +1569,6 @@ function updateStarPowerMeterUI() {
       array[i * 3 + 2] = pZ;
     }
     attr.needsUpdate = true;
-  }
-
-  // Animate Splashing Physics Particles at the surface
-  if (spSplashParticleSystem && pct > 0) {
-    const posAttr = spSplashParticleSystem.geometry.attributes.position as THREE.BufferAttribute;
-    const velAttr = spSplashParticleSystem.geometry.attributes.velocity as THREE.BufferAttribute;
-    const posArray = posAttr.array as Float32Array;
-    const velArray = velAttr.array as Float32Array;
-    
-    // Position the splash emitter exactly at the liquid surface
-    spSplashParticleSystem.position.z = bottomZ - currentHeight;
-    
-    for (let i = 0; i < posArray.length / 3; i++) {
-      // Apply velocity
-      posArray[i * 3] += velArray[i * 3];
-      posArray[i * 3 + 1] += velArray[i * 3 + 1];
-      posArray[i * 3 + 2] += velArray[i * 3 + 2];
-      
-      // Apply gravity (positive Z is down/falling back to surface)
-      velArray[i * 3 + 2] += 0.008; 
-      
-      // If particle falls below the surface, reset it to jump out again
-      if (posArray[i * 3 + 2] > 0) {
-        posArray[i * 3] = (Math.random() - 0.5) * 0.15;
-        posArray[i * 3 + 1] = (Math.random() - 0.5) * 0.15;
-        posArray[i * 3 + 2] = 0;
-        
-        velArray[i * 3] = (Math.random() - 0.5) * 0.05;
-        velArray[i * 3 + 1] = (Math.random() - 0.5) * 0.05;
-        // Jump force depends on slosh intensity
-        velArray[i * 3 + 2] = -Math.random() * 0.15 - 0.05;
-      }
-    }
-    posAttr.needsUpdate = true;
-  } else if (spSplashParticleSystem) {
-     spSplashParticleSystem.visible = false;
-  }
-  
-  if (spSplashParticleSystem && pct > 0) {
-     spSplashParticleSystem.visible = true;
   }
 
   // Emissive Wave Glow
