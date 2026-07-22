@@ -2366,8 +2366,8 @@ function playStarPowerSound() {
         const apSource = ctx.createBufferSource();
         apSource.buffer = applauseAudioBuffer;
         const apGain = ctx.createGain();
-        apGain.gain.setValueAtTime(1.8, now);
-        apGain.gain.setValueAtTime(1.8, now + 8);
+        apGain.gain.setValueAtTime(1.4, now);
+        apGain.gain.setValueAtTime(1.4, now + 8);
         apGain.gain.linearRampToValueAtTime(0, now + 10);
         apSource.connect(apGain);
         apGain.connect(ctx.destination);
